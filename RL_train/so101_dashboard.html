@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SO-ARM101 · Control Dashboard</title>
+<style>
+:root {
+  --bg: #0b0d12; --card: #12151f; --border: #1e2538; --accent: #4f8fff;
+  --accent2: #ff6030; --green: #2ecc71; --yellow: #f1c40f; --purple: #9b59b6;
+  --text: #d4dae8; --sub: #5a6480; --font: 'Inter', system-ui, sans-serif;
+  --red: #e74c3c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.topbar{background:#0d1018;border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:14px;height:48px;flex-shrink:0}
+.topbar h1{font-size:1rem;font-weight:700;letter-spacing:.04em;color:#fff}
+.badge{padding:2px 9px;border-radius:12px;font-size:.68rem;font-weight:700;letter-spacing:.06em}
+.badge-blue{background:#1a2e55;color:var(--accent)}
+.badge-green{background:#0d2e1a;color:var(--green)}
+.badge-red{background:#2e0d0d;color:var(--red)}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--red);margin-left:auto;transition:.3s}
+.conn-dot.ok{background:var(--green)}
+.conn-label{font-size:.72rem;color:var(--sub)}
+.main{display:flex;flex:1;overflow:hidden}
+/* Left panel */
+.left{width:340px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;gap:0}
+/* Center */
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden}
+/* Right panel */
+.right{width:340px;flex-shrink:0;border-left:1px solid var(--border);overflow-y:auto}
+.panel{border-bottom:1px solid var(--border);padding:14px 16px}
+.panel h2{font-size:.72rem;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel h2 span{font-size:.65rem;font-weight:500;color:var(--sub);text-transform:none;letter-spacing:0}
+/* IK input */
+.coord-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.coord-block label{display:block;font-size:.7rem;color:var(--sub);margin-bottom:4px;font-weight:600}
+.coord-block input{width:100%;background:#0f1220;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:.85rem;font-family:monospace;outline:none;transition:.15s}
+.coord-block input:focus{border-color:var(--accent)}
+.btn{border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:.78rem;font-weight:700;transition:.15s;letter-spacing:.03em}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#3a72ee}
+.btn-success{background:#1a5c32;color:var(--green)}
+.btn-success:hover{background:#1f6f3c}
+.btn-danger{background:#5c1a1a;color:var(--red)}
+.btn-danger:hover{background:#6f1f1f}
+.btn-sec{background:#1c2235;color:var(--text)}
+.btn-sec:hover{background:#232b44}
+.btn-warn{background:#4a3800;color:var(--yellow)}
+.btn-warn:hover{background:#5a4500}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+/* Joint display */
+.joint-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #151824}
+.joint-row:last-child{border:none}
+.joint-name{width:100px;font-size:.72rem;color:var(--sub);font-weight:600}
+.joint-val{width:52px;font-family:monospace;font-size:.8rem;color:var(--accent);text-align:right}
+.joint-bar-wrap{flex:1;height:6px;background:#1a2036;border-radius:3px;overflow:hidden}
+.joint-bar{height:100%;border-radius:3px;transition:width .3s}
+.joint-deg{width:48px;font-family:monospace;font-size:.72rem;color:var(--sub);text-align:right}
+/* EE display */
+.ee-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.ee-cell{background:#0f1220;border-radius:6px;padding:8px;text-align:center}
+.ee-cell .lbl{font-size:.65rem;color:var(--sub);font-weight:700;margin-bottom:3px}
+.ee-cell .val{font-size:1rem;font-weight:700;font-family:monospace}
+.ee-err{display:flex;justify-content:space-between;align-items:center;background:#0f1220;border-radius:6px;padding:7px 10px;font-size:.78rem}
+/* Render view */
+.render-wrap{flex:1;display:flex;flex-direction:column;background:#080a0f;position:relative;overflow:hidden}
+.render-img{width:100%;height:100%;object-fit:contain;display:block}
+.render-overlay{position:absolute;bottom:12px;left:12px;display:flex;gap:8px}
+.cam-controls{display:flex;gap:6px;align-items:center;padding:6px 10px;background:rgba(0,0,0,.6);border-radius:8px;backdrop-filter:blur(4px)}
+.cam-controls label{font-size:.68rem;color:var(--sub)}
+.cam-controls input[type=range]{-webkit-appearance:none;height:3px;background:#2a3148;border-radius:3px;width:70px}
+.cam-controls input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent)}
+/* Status bar below render */
+.statusbar{background:#0d1018;border-top:1px solid var(--border);padding:6px 16px;display:flex;gap:20px;align-items:center;font-size:.72rem;color:var(--sub);flex-shrink:0}
+.status-item{display:flex;gap:6px;align-items:center}
+.status-val{color:var(--text);font-family:monospace;font-weight:600}
+/* Pipeline builder */
+.pipeline-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;max-height:260px;overflow-y:auto}
+.pl-step{background:#0f1220;border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;align-items:center;gap:8px;cursor:grab}
+.pl-step:active{cursor:grabbing}
+.pl-step-num{width:20px;height:20px;border-radius:50%;background:#1e2538;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--sub);flex-shrink:0}
+.pl-step-label{flex:1;font-size:.78rem;font-weight:600}
+.pl-step-sub{font-size:.68rem;color:var(--sub)}
+.pl-step-del{background:none;border:none;color:var(--sub);cursor:pointer;font-size:.9rem;padding:2px 5px;border-radius:4px;transition:.15s}
+.pl-step-del:hover{color:var(--red);background:#1f1215}
+.pl-step.active-step{border-color:var(--accent);background:#0d1a30}
+.pl-step.done-step{border-color:var(--green);background:#0a1e10}
+.add-step-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.add-step-btn{background:#0f1220;border:1px solid var(--border);border-radius:6px;padding:7px 10px;cursor:pointer;color:var(--text);font-size:.75rem;font-weight:600;transition:.15s;text-align:left}
+.add-step-btn:hover{border-color:var(--accent);background:#121a2e}
+.add-step-btn .ico{margin-right:5px;font-size:.9rem}
+/* Log */
+.log-area{background:#080a0f;border-radius:6px;padding:8px 10px;font-family:monospace;font-size:.72rem;color:var(--sub);max-height:130px;overflow-y:auto;line-height:1.6}
+.log-area .log-ok{color:var(--green)}
+.log-area .log-run{color:var(--accent)}
+.log-area .log-err{color:var(--red)}
+/* Gripper */
+.gripper-slider-wrap{display:flex;align-items:center;gap:10px}
+.gripper-slider{-webkit-appearance:none;flex:1;height:8px;border-radius:4px;outline:none}
+.gripper-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #fff}
+.gripper-label{font-size:.8rem;font-weight:700;min-width:44px;text-align:right}
+/* Step form */
+.step-form{background:#0a0c14;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;display:none}
+.step-form.visible{display:block}
+.form-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.form-row label{font-size:.72rem;color:var(--sub);width:60px;flex-shrink:0}
+.form-row input{flex:1;background:#0f1220;border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-size:.8rem;font-family:monospace;outline:none}
+.form-row input:focus{border-color:var(--accent)}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.65rem;font-weight:700;margin-right:4px}
+.tag-move{background:#1a2e55;color:var(--accent)}
+.tag-grip{background:#0d2e1a;color:var(--green)}
+.tag-wait{background:#2e2a0d;color:var(--yellow)}
+.tag-home{background:#2e0d2e;color:var(--purple)}
+.scrollbar-thin::-webkit-scrollbar{width:4px}
+.scrollbar-thin::-webkit-scrollbar-track{background:transparent}
+.scrollbar-thin::-webkit-scrollbar-thumb{background:#1e2538;border-radius:2px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>SO-ARM101</h1>
+  <span class="badge badge-blue">MuJoCo 3.6</span>
+  <span class="badge badge-blue">DLS IK</span>
+  <span class="badge badge-green" id="hw-badge">SIM</span>
+  <span class="badge" id="viewerBadge" style="background:#1a1a2e;color:#6a6a9f;cursor:pointer" onclick="openViewer()" title="Open MuJoCo 3-D Viewer">🖥 Viewer: OFF</span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+    <span class="conn-label">Server</span>
+    <div class="conn-dot" id="connDot"></div>
+    <button class="btn btn-sec" style="padding:4px 10px;font-size:.7rem" onclick="connectServer()">Connect</button>
+    <span style="color:var(--sub);font-size:.72rem" id="serverUrl">http://127.0.0.1:7842</span>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ─── LEFT PANEL ─── -->
+<div class="left scrollbar-thin">
+
+  <!-- IK input -->
+  <div class="panel">
+    <h2>🎯 Inverse Kinematics <span>— enter target XYZ (metres)</span></h2>
+    <div class="coord-grid">
+      <div class="coord-block">
+        <label>X (forward)</label>
+        <input type="number" id="ik_x" value="0.20" step="0.01" min="-0.5" max="0.5">
+      </div>
+      <div class="coord-block">
+        <label>Y (lateral)</label>
+        <input type="number" id="ik_y" value="0.00" step="0.01" min="-0.5" max="0.5">
+      </div>
+      <div class="coord-block">
+        <label>Z (height)</label>
+        <input type="number" id="ik_z" value="0.25" step="0.01" min="0.01" max="0.6">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="solveIK()" style="flex:1">⚡ Solve IK & Move</button>
+      <button class="btn btn-sec" onclick="homeArm()">🏠 Home</button>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <label style="font-size:.72rem;color:var(--sub);min-width:60px">Duration:</label>
+      <input type="range" id="ik_duration" min="0.5" max="5" step="0.5" value="2" 
+             oninput="document.getElementById('durLabel').textContent=this.value+'s'"
+             style="-webkit-appearance:none;flex:1;height:6px;border-radius:3px;background:#1a2036;outline:none">
+      <span id="durLabel" style="font-family:monospace;font-size:.75rem;color:var(--text);min-width:32px">2s</span>
+    </div>
+    <div style="margin-top:8px;background:#0f1220;border-radius:6px;padding:8px 10px;font-size:.75rem;color:var(--sub)">
+      <span>IK Error: </span><span id="ik_err" style="color:var(--green);font-family:monospace;font-weight:700">—</span>
+      &nbsp;&nbsp;
+      <span>Iters: </span><span id="ik_iters" style="color:var(--accent);font-family:monospace">—</span>
+    </div>
+  </div>
+
+  <!-- EE position display -->
+  <div class="panel">
+    <h2>📍 End-Effector Position</h2>
+    <div class="ee-grid">
+      <div class="ee-cell"><div class="lbl">X (m)</div><div class="val" id="ee_x" style="color:var(--accent)">—</div></div>
+      <div class="ee-cell"><div class="lbl">Y (m)</div><div class="val" id="ee_y" style="color:var(--accent)">—</div></div>
+      <div class="ee-cell"><div class="lbl">Z (m)</div><div class="val" id="ee_z" style="color:var(--accent)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-sec" style="flex:1;font-size:.72rem" onclick="nudge('x',0.01)">X+</button>
+      <button class="btn btn-sec" style="flex:1;font-size:.72rem" onclick="nudge('x',-0.01)">X−</button>
+      <button class="btn btn-sec" style="flex:1;font-size:.72rem" onclick="nudge('y',0.01)">Y+</button>
+      <button class="btn btn-sec" style="flex:1;font-size:.72rem" onclick="nudge('y',-0.01)">Y−</button>
+      <button class="btn btn-sec" style="flex:1;font-size:.72rem" onclick="nudge('z',0.01)">Z+</button>
+      <button class="btn btn-sec" style="flex:1;font-size:.72rem" onclick="nudge('z',-0.01)">Z−</button>
+    </div>
+  </div>
+
+  <!-- Gripper -->
+  <div class="panel">
+    <h2>✊ Gripper</h2>
+    <div class="gripper-slider-wrap">
+      <span style="font-size:.72rem;color:var(--sub);width:36px">Close</span>
+      <input type="range" class="gripper-slider" id="gripperSlider" min="0" max="1" step="0.05" value="0" oninput="setGripper(this.value)">
+      <span style="font-size:.72rem;color:var(--sub);width:38px">Open</span>
+      <span class="gripper-label" id="gripperLabel">0%</span>
+    </div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-success" style="flex:1" onclick="setGripperBtn(1)">✊ Close</button>
+      <button class="btn btn-danger"  style="flex:1" onclick="setGripperBtn(0)">👐 Open</button>
+    </div>
+  </div>
+
+  <!-- Joint angles display -->
+  <div class="panel">
+    <h2>⚙️ Joint Angles</h2>
+    <div id="jointDisplay"></div>
+  </div>
+
+</div>
+
+<!-- ─── CENTER (render + status) ─── -->
+<div class="center">
+  <div class="render-wrap">
+    <img class="render-img" id="renderImg" src="" alt="Simulation View" style="opacity:0.3">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--sub);font-size:.85rem;text-align:center" id="renderPlaceholder">
+      <div style="font-size:2rem;margin-bottom:8px">🤖</div>
+      Connect to server to see live simulation<br>
+      <code style="font-size:.72rem;color:var(--accent)">python3 ik_server.py</code><br>
+      <span style="font-size:.7rem;color:#3a4060">or with live viewer: </span>
+      <code style="font-size:.72rem;color:var(--accent)">python3 ik_server.py --viewer</code>
+    </div>
+    <!-- MuJoCo viewer launch banner (shown when viewer not open) -->
+    <div id="viewerBanner" style="display:none;position:absolute;top:12px;right:12px;background:rgba(13,16,24,0.92);border:1px solid var(--border);border-radius:10px;padding:14px 18px;min-width:280px;backdrop-filter:blur(6px)">
+      <div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:8px">🖥 MuJoCo Live Viewer</div>
+      <div style="font-size:.72rem;color:var(--sub);margin-bottom:10px;line-height:1.6">
+        Launch the interactive 3-D viewer for full orbit/zoom/inspect.<br>
+        Restart the server with:<br>
+        <code style="color:var(--accent)">python3 ik_server.py --viewer</code>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="flex:1;font-size:.72rem" onclick="openViewer()">🚀 Launch Viewer</button>
+        <button class="btn btn-sec" style="font-size:.72rem" onclick="document.getElementById('viewerBanner').style.display='none'">✕</button>
+      </div>
+      <div style="margin-top:8px;font-size:.68rem;color:var(--sub)" id="viewerBannerStatus"></div>
+    </div>
+
+    <!-- Viewer status indicator (top-left of render) -->
+    <div id="viewerIndicator" style="display:none;position:absolute;top:12px;left:12px;background:rgba(13,16,24,0.85);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-size:.72rem;color:var(--green);display:flex;align-items:center;gap:6px;backdrop-filter:blur(4px)">
+      <span style="width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite"></span>
+      MuJoCo Viewer Live
+    </div>
+
+    <div class="render-overlay">
+      <div class="cam-controls">
+        <label>Az</label>
+        <input type="range" id="camAz" min="0" max="360" value="160" oninput="updateCam()">
+        <label>El</label>
+        <input type="range" id="camEl" min="-80" max="0" value="-20" oninput="updateCam()">
+        <label>Dist</label>
+        <input type="range" id="camDist" min="0.4" max="2.5" step="0.05" value="1.2" oninput="updateCam()">
+        <button class="btn btn-sec" style="padding:4px 8px;font-size:.68rem" onclick="resetCam()">↺</button>
+      </div>
+      <button class="btn" id="viewerToggleBtn"
+        style="padding:5px 10px;font-size:.72rem;background:rgba(13,16,24,0.85);border:1px solid var(--border);color:var(--sub)"
+        onclick="toggleViewerBanner()">🖥 Viewer</button>
+    </div>
+  </div>
+  <div class="statusbar">
+    <div class="status-item">🤖 <span>EE:</span> <span class="status-val" id="sb_ee">—</span></div>
+    <div class="status-item">📐 <span>IK err:</span> <span class="status-val" id="sb_err">—</span></div>
+    <div class="status-item">⚡ <span>Iters:</span> <span class="status-val" id="sb_iter">—</span></div>
+    <div class="status-item" style="margin-left:auto">
+      <span id="pipelineStatus" style="color:var(--sub)">Idle</span>
+    </div>
+    <div class="status-item">
+      <span id="viewerStatusBar" style="font-size:.72rem;color:var(--sub)"></span>
+    </div>
+    <div class="status-item">
+      <button class="btn btn-sec" style="padding:3px 8px;font-size:.68rem" onclick="refreshRender()">🔄 Refresh</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── RIGHT PANEL ─── -->
+<div class="right scrollbar-thin">
+
+  <!-- Pipeline builder -->
+  <div class="panel">
+    <h2>🔧 Pipeline Builder <span>— pick & place programs</span></h2>
+
+    <!-- Preset pipelines -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:.7rem;color:var(--sub);margin-bottom:6px;font-weight:600">PRESETS</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sec" style="font-size:.7rem;padding:5px 9px" onclick="loadPreset('pickplace')">📦 Pick & Place</button>
+        <button class="btn btn-sec" style="font-size:.7rem;padding:5px 9px" onclick="loadPreset('wave')">👋 Wave</button>
+        <button class="btn btn-sec" style="font-size:.7rem;padding:5px 9px" onclick="loadPreset('scan')">🔍 Scan</button>
+      </div>
+    </div>
+
+    <!-- Step form (shown when adding) -->
+    <div class="step-form" id="stepForm">
+      <div style="font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:10px" id="stepFormTitle">Add Move Step</div>
+      <div id="stepFormBody"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" style="flex:1" onclick="confirmAddStep()">Add Step</button>
+        <button class="btn btn-sec" onclick="cancelAddStep()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Steps list -->
+    <div class="pipeline-list scrollbar-thin" id="pipelineList">
+      <div style="color:var(--sub);font-size:.75rem;text-align:center;padding:20px">
+        No steps yet — add steps below
+      </div>
+    </div>
+
+    <!-- Add step buttons -->
+    <div class="add-step-grid" style="margin-bottom:10px">
+      <button class="add-step-btn" onclick="showStepForm('move_ik')"><span class="ico">🎯</span>Move to XYZ</button>
+      <button class="add-step-btn" onclick="showStepForm('gripper_close')"><span class="ico">✊</span>Close Gripper</button>
+      <button class="add-step-btn" onclick="showStepForm('gripper_open')"><span class="ico">👐</span>Open Gripper</button>
+      <button class="add-step-btn" onclick="showStepForm('wait')"><span class="ico">⏱️</span>Wait</button>
+      <button class="add-step-btn" onclick="showStepForm('home')"><span class="ico">🏠</span>Go Home</button>
+      <button class="add-step-btn" onclick="captureEE()"><span class="ico">📍</span>Capture EE Pos</button>
+    </div>
+
+    <!-- Pipeline controls -->
+    <div class="btn-row" style="margin-bottom:10px">
+      <button class="btn btn-success" style="flex:1" onclick="runPipeline()" id="runBtn">▶ Run Pipeline</button>
+      <button class="btn btn-warn" onclick="clearPipeline()">🗑 Clear</button>
+      <button class="btn btn-sec" onclick="exportPipeline()">💾 Export</button>
+    </div>
+
+    <!-- Log -->
+    <div style="font-size:.7rem;color:var(--sub);margin-bottom:4px;font-weight:600">EXECUTION LOG</div>
+    <div class="log-area scrollbar-thin" id="pipelineLog">Ready.</div>
+  </div>
+
+  <!-- Hardware connection -->
+  <div class="panel">
+    <h2>🔌 Hardware Bridge <span>— connect to real arm</span></h2>
+    <div style="background:#0f1220;border-radius:6px;padding:10px;font-size:.75rem;color:var(--sub);margin-bottom:10px;line-height:1.6">
+      Install LeRobot:<br>
+      <code style="color:var(--accent)">pip install lerobot</code><br><br>
+      Then run the hardware bridge script:<br>
+      <code style="color:var(--accent)">python3 hw_bridge.py --port /dev/ttyUSB0</code>
+    </div>
+    <div class="form-row" style="margin-bottom:8px">
+      <label>Port</label>
+      <input type="text" id="hw_port" value="/dev/ttyUSB0" placeholder="e.g. /dev/ttyUSB0 or COM3">
+    </div>
+    <div class="form-row" style="margin-bottom:8px">
+      <label>HW URL</label>
+      <input type="text" id="hw_url" value="http://127.0.0.1:7843" placeholder="hw bridge URL">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-success" style="flex:1" onclick="connectHW()">🔌 Connect HW</button>
+      <button class="btn btn-danger" onclick="disconnectHW()">✕ Disconnect</button>
+    </div>
+    <div style="margin-top:8px;font-size:.72rem" id="hwStatus">
+      <span style="color:var(--sub)">Status: </span><span style="color:var(--red)">Disconnected</span>
+    </div>
+    <div style="margin-top:10px;font-size:.7rem;color:var(--sub);line-height:1.7">
+      When connected, IK commands are mirrored to real hardware.<br>
+      Joints: <code style="color:var(--text)">shoulder_pan · shoulder_lift · elbow_flex · wrist_flex · wrist_roll · gripper</code><br>
+      Protocol: <code style="color:var(--accent)">Feetech STS3215 via lerobot</code>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  Config
+// ════════════════════════════════════════════════════════════════
+let SERVER = 'http://127.0.0.1:7842';
+let HW_URL = null;
+let connected = false;
+let pipeline = [];
+let addingStepType = null;
+let pollTimer = null;
+
+// ════════════════════════════════════════════════════════════════
+//  Server connection
+// ════════════════════════════════════════════════════════════════
+async function api(method, path, body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(SERVER + path, opts);
+  return r.json();
+}
+
+async function connectServer() {
+  SERVER = document.getElementById('serverUrl').textContent.trim() || SERVER;
+  try {
+    const s = await api('GET', '/state');
+    connected = true;
+    document.getElementById('connDot').classList.add('ok');
+    document.getElementById('renderPlaceholder').style.display = 'none';
+    document.getElementById('renderImg').style.opacity = '1';
+    startPolling();
+    log('✓ Connected to simulation server', 'ok');
+    refreshRender();
+    // check viewer state immediately
+    setViewerOpen(s.viewer_open || false);
+    if (!s.viewer_open) {
+      // show banner hint after short delay
+      setTimeout(() => {
+        document.getElementById('viewerBanner').style.display = 'block';
+      }, 1200);
+    }
+  } catch(e) {
+    log('✗ Cannot connect: ' + e.message, 'err');
+  }
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if (!connected) return;
+    try {
+      const s = await api('GET', '/state');
+      updateStateUI(s);
+      // sync viewer badge from server state
+      if (s.viewer_open !== viewerOpen) setViewerOpen(s.viewer_open);
+    } catch(e) { /* ignore */ }
+  }, 600);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  State UI
+// ════════════════════════════════════════════════════════════════
+const JOINT_NAMES = ['shoulder_pan','shoulder_lift','elbow_flex','wrist_flex','wrist_roll'];
+const JOINT_LABELS = ['Shoulder Pan','Shoulder Lift','Elbow Flex','Wrist Flex','Wrist Roll'];
+const JOINT_RANGES = [[-1.92,1.92],[-1.745,1.745],[-1.69,1.69],[-1.658,1.658],[-2.744,2.841]];
+const JOINT_COLORS = ['#4f8fff','#ff6030','#2ecc71','#f1c40f','#9b59b6'];
+
+function updateStateUI(s) {
+  // EE
+  const [x,y,z] = s.ee;
+  document.getElementById('ee_x').textContent = x.toFixed(4);
+  document.getElementById('ee_y').textContent = y.toFixed(4);
+  document.getElementById('ee_z').textContent = z.toFixed(4);
+  document.getElementById('sb_ee').textContent = `[${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)}]`;
+  // IK stats
+  document.getElementById('ik_err').textContent = s.ik_err_mm + ' mm';
+  document.getElementById('ik_iters').textContent = s.ik_iters;
+  document.getElementById('sb_err').textContent = s.ik_err_mm + ' mm';
+  document.getElementById('sb_iter').textContent = s.ik_iters;
+  document.getElementById('ik_err').style.color = s.ik_err_mm < 5 ? 'var(--green)' : s.ik_err_mm < 15 ? 'var(--yellow)' : 'var(--red)';
+  // Joints
+  let html = '';
+  JOINT_NAMES.forEach((n,i) => {
+    const v = s.joints[n] || 0;
+    const [lo,hi] = JOINT_RANGES[i];
+    const pct = ((v - lo)/(hi - lo)*100).toFixed(1);
+    const deg = (v * 180/Math.PI).toFixed(1);
+    html += `<div class="joint-row">
+      <div class="joint-name">${JOINT_LABELS[i]}</div>
+      <div class="joint-val">${v.toFixed(3)}</div>
+      <div class="joint-bar-wrap"><div class="joint-bar" style="width:${pct}%;background:${JOINT_COLORS[i]}"></div></div>
+      <div class="joint-deg">${deg}°</div>
+    </div>`;
+  });
+  document.getElementById('jointDisplay').innerHTML = html;
+  // Pipeline
+  if (s.pipeline_running) {
+    document.getElementById('pipelineStatus').textContent = '▶ Pipeline running...';
+    document.getElementById('pipelineStatus').style.color = 'var(--accent)';
+  } else {
+    document.getElementById('pipelineStatus').textContent = 'Idle';
+    document.getElementById('pipelineStatus').style.color = 'var(--sub)';
+  }
+  // Log
+  if (s.pipeline_log && s.pipeline_log.length > 0) {
+    const logEl = document.getElementById('pipelineLog');
+    logEl.innerHTML = s.pipeline_log.map(l => {
+      const cls = l.startsWith('✅') ? 'log-ok' : l.startsWith('▶') ? 'log-run' : l.startsWith('✗') ? 'log-err' : '';
+      return `<div class="${cls}">${l}</div>`;
+    }).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  IK
+// ════════════════════════════════════════════════════════════════
+async function solveIK() {
+  const x = parseFloat(document.getElementById('ik_x').value);
+  const y = parseFloat(document.getElementById('ik_y').value);
+  const z = parseFloat(document.getElementById('ik_z').value);
+  const duration = parseFloat(document.getElementById('ik_duration').value);
+  if (!connected) { alert('Connect to server first'); return; }
+  try {
+    const r = await api('POST', '/ik', {x, y, z, smooth: true, duration: duration});
+    document.getElementById('ik_err').textContent = r.err_mm + ' mm';
+    document.getElementById('ik_iters').textContent = r.iters;
+    if (r.png) updateRender(r.png);
+    log(`IK → [${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)}] (${duration}s) err=${r.err_mm}mm`, 'ok');
+    
+    // Wait for motion to complete (duration + small settle time)
+    log(`⏳ Moving (${duration}s)...`, 'run');
+    await new Promise(resolve => setTimeout(resolve, duration * 1000 + 500));
+    log(`✓ Motion complete, holding position`, 'ok');
+    
+    // Mirror to HW if connected
+    if (HW_URL) mirrorToHW(r.joints);
+  } catch(e) { log('IK failed: ' + e.message, 'err'); }
+}
+
+async function homeArm() {
+  if (!connected) return;
+  await api('POST', '/home');
+  refreshRender();
+  log('→ Home pose', 'ok');
+}
+
+function nudge(axis, delta) {
+  const ids = { x: 'ik_x', y: 'ik_y', z: 'ik_z' };
+  const el = document.getElementById(ids[axis]);
+  el.value = (parseFloat(el.value) + delta).toFixed(3);
+  solveIK();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Gripper
+// ════════════════════════════════════════════════════════════════
+async function setGripper(v) {
+  document.getElementById('gripperLabel').textContent = Math.round(v*100)+'%';
+  const grad = `linear-gradient(to right, var(--accent) ${v*100}%, #1a2036 ${v*100}%)`;
+  document.getElementById('gripperSlider').style.background = grad;
+  if (!connected) return;
+  await api('POST', '/gripper', {value: parseFloat(v)});
+}
+
+async function setGripperBtn(v) {
+  document.getElementById('gripperSlider').value = v;
+  await setGripper(v);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Render
+// ════════════════════════════════════════════════════════════════
+async function refreshRender() {
+  if (!connected) return;
+  const r = await api('GET', '/render');
+  if (r.png) updateRender(r.png);
+}
+
+function updateRender(b64) {
+  document.getElementById('renderImg').src = 'data:image/png;base64,' + b64;
+}
+
+let camTimeout = null;
+async function updateCam() {
+  const az = parseFloat(document.getElementById('camAz').value);
+  const el = parseFloat(document.getElementById('camEl').value);
+  const dist = parseFloat(document.getElementById('camDist').value);
+  if (!connected) return;
+  clearTimeout(camTimeout);
+  camTimeout = setTimeout(async () => {
+    await api('POST', '/setcam', {az, el, dist});
+    refreshRender();
+  }, 150);
+}
+
+function resetCam() {
+  document.getElementById('camAz').value = 160;
+  document.getElementById('camEl').value = -20;
+  document.getElementById('camDist').value = 1.2;
+  updateCam();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Pipeline builder
+// ════════════════════════════════════════════════════════════════
+function renderPipeline() {
+  const el = document.getElementById('pipelineList');
+  if (pipeline.length === 0) {
+    el.innerHTML = '<div style="color:var(--sub);font-size:.75rem;text-align:center;padding:20px">No steps yet — add steps below</div>';
+    return;
+  }
+  el.innerHTML = pipeline.map((s,i) => {
+    const typeMap = {move_ik:'move',gripper:'grip',wait:'wait',home:'home'};
+    const tagClass = `tag-${typeMap[s.type]||'move'}`;
+    let sub = '';
+    if (s.type === 'move_ik') sub = `x=${s.x} y=${s.y} z=${s.z}  move=${s.duration||2.0}s settle=${s.settle_time||1.5}s`;
+    else if (s.type === 'gripper') sub = `${s.value > 0.5 ? 'CLOSE' : 'OPEN'} (${s.settle_time||0.8}s)`;
+    else if (s.type === 'wait') sub = `${s.duration}s`;
+    else if (s.type === 'home') sub = 'all joints to 0';
+    return `<div class="pl-step" id="step_${i}">
+      <div class="pl-step-num">${i+1}</div>
+      <div style="flex:1">
+        <div class="pl-step-label">
+          <span class="tag ${tagClass}">${s.type.replace('_',' ')}</span>${s.label||''}
+        </div>
+        <div class="pl-step-sub">${sub}</div>
+      </div>
+      <button class="pl-step-del" onclick="deleteStep(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteStep(i) { pipeline.splice(i,1); renderPipeline(); }
+function clearPipeline() { pipeline=[]; renderPipeline(); document.getElementById('pipelineLog').innerHTML='Ready.'; }
+
+function showStepForm(type) {
+  addingStepType = type;
+  const form = document.getElementById('stepForm');
+  const title = document.getElementById('stepFormTitle');
+  const body = document.getElementById('stepFormBody');
+  form.classList.add('visible');
+
+  if (type === 'move_ik') {
+    title.textContent = '🎯 Add Move to XYZ';
+    const ex = document.getElementById('ik_x').value;
+    const ey = document.getElementById('ik_y').value;
+    const ez = document.getElementById('ik_z').value;
+    body.innerHTML = `
+      <div class="form-row"><label>Label</label><input id="sf_label" value="Move to target"></div>
+      <div class="form-row"><label>X (m)</label><input id="sf_x" type="number" value="${ex}" step="0.01"></div>
+      <div class="form-row"><label>Y (m)</label><input id="sf_y" type="number" value="${ey}" step="0.01"></div>
+      <div class="form-row"><label>Z (m)</label><input id="sf_z" type="number" value="${ez}" step="0.01"></div>
+      <div class="form-row"><label>Settle (s)</label><input id="sf_settle" type="number" value="1.5" step="0.1"></div>`;
+  } else if (type === 'gripper_close') {
+    title.textContent = '✊ Close Gripper';
+    body.innerHTML = `
+      <div class="form-row"><label>Label</label><input id="sf_label" value="Close gripper"></div>
+      <div class="form-row"><label>Amount</label><input id="sf_grip" type="number" value="1.0" min="0" max="1" step="0.1"></div>
+      <div class="form-row"><label>Settle (s)</label><input id="sf_settle" type="number" value="0.8" step="0.1"></div>`;
+    addingStepType = 'gripper_close';
+  } else if (type === 'gripper_open') {
+    title.textContent = '👐 Open Gripper';
+    body.innerHTML = `
+      <div class="form-row"><label>Label</label><input id="sf_label" value="Open gripper"></div>
+      <div class="form-row"><label>Settle (s)</label><input id="sf_settle" type="number" value="0.8" step="0.1"></div>`;
+    addingStepType = 'gripper_open';
+  } else if (type === 'wait') {
+    title.textContent = '⏱️ Wait';
+    body.innerHTML = `
+      <div class="form-row"><label>Label</label><input id="sf_label" value="Wait"></div>
+      <div class="form-row"><label>Duration</label><input id="sf_dur" type="number" value="1.0" step="0.1"></div>`;
+  } else if (type === 'home') {
+    title.textContent = '🏠 Go Home';
+    body.innerHTML = `<div class="form-row"><label>Label</label><input id="sf_label" value="Go home"></div>`;
+  }
+}
+
+function confirmAddStep() {
+  const label = document.getElementById('sf_label')?.value || '';
+  let step;
+  if (addingStepType === 'move_ik') {
+    step = { type:'move_ik', label, x:+document.getElementById('sf_x').value,
+             y:+document.getElementById('sf_y').value, z:+document.getElementById('sf_z').value,
+             settle_time:+document.getElementById('sf_settle').value };
+  } else if (addingStepType === 'gripper_close') {
+    step = { type:'gripper', label, value:+document.getElementById('sf_grip').value, settle_time:+document.getElementById('sf_settle').value };
+  } else if (addingStepType === 'gripper_open') {
+    step = { type:'gripper', label, value:0, settle_time:+document.getElementById('sf_settle').value };
+  } else if (addingStepType === 'wait') {
+    step = { type:'wait', label, duration:+document.getElementById('sf_dur').value };
+  } else if (addingStepType === 'home') {
+    step = { type:'home', label };
+  }
+  if (step) { pipeline.push(step); renderPipeline(); }
+  cancelAddStep();
+}
+
+function cancelAddStep() {
+  document.getElementById('stepForm').classList.remove('visible');
+  addingStepType = null;
+}
+
+function captureEE() {
+  const x = parseFloat(document.getElementById('ee_x').textContent)||0;
+  const y = parseFloat(document.getElementById('ee_y').textContent)||0;
+  const z = parseFloat(document.getElementById('ee_z').textContent)||0;
+  pipeline.push({ type:'move_ik', label:`Captured [${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}]`, x, y, z, settle_time:1.5 });
+  renderPipeline();
+  log(`Captured EE pos [${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}]`, 'ok');
+}
+
+async function runPipeline() {
+  if (!connected) { alert('Connect to server first'); return; }
+  if (pipeline.length === 0) { alert('Add steps first'); return; }
+  document.getElementById('pipelineLog').innerHTML = '<div class="log-run">▶ Starting pipeline...</div>';
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = '⏳ Running…';
+  try {
+    await api('POST', '/pipeline', { steps: pipeline });
+    log('Pipeline running on server…', 'ok');
+    // Poll until done
+    await pollPipelineCompletion();
+  } catch(e) {
+    log('Pipeline error: ' + e.message, 'err');
+  } finally {
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').textContent = '▶ Run Pipeline';
+  }
+}
+
+async function pollPipelineCompletion() {
+  // Wait for server to report pipeline_running=false
+  while (true) {
+    await new Promise(r => setTimeout(r, 700));
+    try {
+      const s = await api('GET', '/state');
+      updateStateUI(s);
+      if (!s.pipeline_running) {
+        log('✅ Pipeline finished', 'ok');
+        refreshRender();
+        break;
+      }
+    } catch(e) { break; }
+  }
+}
+
+function exportPipeline() {
+  const json = JSON.stringify({ pipeline, exported: new Date().toISOString() }, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'so101_pipeline.json'; a.click();
+}
+
+function loadPreset(name) {
+  const presets = {
+    pickplace: [
+      // Pick object - moving ahead of where tips were touching (x:0.24)
+      // Added friction to cylinder in scene_full.xml to prevent slipping
+      // Using wrist_angle=1.57 (≈90°) for horizontal gripper fingers
+      {type:'home', label:'Home position'},
+      {type:'gripper', label:'Open gripper', value:0.0, settle_time:0.8},
+      {type:'move_ik', label:'Pre-grasp above object', x:0.255, y:-0.015, z:0.15, wrist_angle:1.57, duration:2.0, settle_time:0.8},
+      {type:'move_ik', label:'Approach cylinder for grasp', x:0.255, y:-0.015, z:0.02, wrist_angle:1.57, duration:1.5, settle_time:0.8},
+      {type:'gripper', label:'Close gripper (grasp)', value:1.0, settle_time:1.2},
+      {type:'move_ik', label:'Lift with object', x:0.255, y:-0.015, z:0.15, wrist_angle:1.57, duration:1.5, settle_time:0.8},
+      {type:'move_ik', label:'Carry to drop zone', x:0.18, y:0.15, z:0.15, wrist_angle:1.57, duration:2.0, settle_time:0.8},
+      {type:'move_ik', label:'Lower to drop', x:0.18, y:0.15, z:0.04, wrist_angle:1.57, duration:1.5, settle_time:0.8},
+      {type:'gripper', label:'Open gripper (release)', value:0.0, settle_time:1.0},
+      {type:'move_ik', label:'Retreat up', x:0.18, y:0.15, z:0.18, wrist_angle:1.57, duration:1.2, settle_time:0.5},
+      {type:'home', label:'Return home'},
+    ],
+    wave: [
+      {type:'home', label:'Home'},
+      {type:'move_ik', label:'Up', x:0.20, y:0.0, z:0.35, duration:1.5, settle_time:0.5},
+      {type:'move_ik', label:'Wave left', x:0.20, y:0.12, z:0.32, duration:0.8, settle_time:0.2},
+      {type:'move_ik', label:'Wave right', x:0.20, y:-0.12, z:0.32, duration:0.8, settle_time:0.2},
+      {type:'move_ik', label:'Wave left', x:0.20, y:0.12, z:0.32, duration:0.8, settle_time:0.2},
+      {type:'move_ik', label:'Wave right', x:0.20, y:-0.12, z:0.32, duration:0.8, settle_time:0.2},
+      {type:'move_ik', label:'Wave left', x:0.20, y:0.12, z:0.32, duration:0.8, settle_time:0.2},
+      {type:'move_ik', label:'Wave center', x:0.20, y:0.0, z:0.32, duration:0.6, settle_time:0.3},
+      {type:'home', label:'Home'},
+    ],
+    scan: [
+      {type:'home', label:'Home'},
+      {type:'move_ik', label:'Scan 1', x:0.30, y:-0.15, z:0.25, duration:1.5, settle_time:0.5},
+      {type:'move_ik', label:'Scan 2', x:0.30, y:0.0,   z:0.25, duration:1.0, settle_time:0.3},
+      {type:'move_ik', label:'Scan 3', x:0.30, y:0.15,  z:0.25, duration:1.0, settle_time:0.3},
+      {type:'move_ik', label:'Scan 4', x:0.20, y:0.15,  z:0.15, duration:1.2, settle_time:0.5},
+      {type:'move_ik', label:'Scan 5', x:0.20, y:-0.15, z:0.15, duration:1.5, settle_time:0.5},
+      {type:'home', label:'Home'},
+    ]
+  };
+  pipeline = [...(presets[name]||[])];
+  renderPipeline();
+  log(`Loaded preset: ${name}`, 'ok');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Hardware bridge
+// ════════════════════════════════════════════════════════════════
+async function connectHW() {
+  const input = document.getElementById('hw_url').value.trim();
+  HW_URL = input.replace(/\/+$/, '');
+
+  try {
+    const r = await fetch(`${HW_URL}/ping`);
+    const s = await r.json();
+
+    if (!s.ok) throw new Error("HW bridge not responding");
+
+    document.getElementById('hwStatus').innerHTML =
+      `<span style="color:var(--sub)">Status: </span>
+       <span style="color:var(--green)">Connected</span>`;
+
+    document.getElementById('hw-badge').textContent = 'HW';
+    document.getElementById('hw-badge').className = 'badge badge-green';
+
+    log(`✓ HW connected (${s.connected ? 'arm ready' : 'mock'})`, 'ok');
+  } catch (e) {
+    console.error(e);
+    HW_URL = null;
+    document.getElementById('hwStatus').innerHTML =
+      `<span style="color:var(--sub)">Status: </span>
+       <span style="color:var(--red)">Failed</span>`;
+    log('✗ HW connect failed: ' + e.message, 'err');
+  }
+}
+
+function disconnectHW() {
+  HW_URL = null;
+  document.getElementById('hwStatus').innerHTML = '<span style="color:var(--sub)">Status: </span><span style="color:var(--red)">Disconnected</span>';
+  document.getElementById('hw-badge').textContent = 'SIM';
+  log('Hardware disconnected', 'ok');
+}
+
+async function mirrorToHW(joints) {
+  if (!HW_URL) return;
+  try {
+    await fetch(`${HW_URL}/move`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({joints})});
+  } catch(e) { /* ignore */ }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MuJoCo Viewer controls
+// ════════════════════════════════════════════════════════════════
+let viewerOpen = false;
+
+function toggleViewerBanner() {
+  const b = document.getElementById('viewerBanner');
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+
+async function openViewer() {
+  if (!connected) { alert('Connect to server first'); return; }
+  const statusEl = document.getElementById('viewerBannerStatus');
+  if (statusEl) statusEl.textContent = 'Sending request...';
+  try {
+    const r = await api('POST', '/open_viewer');
+    if (r.open) {
+      setViewerOpen(true);
+      if (statusEl) statusEl.textContent = '✓ Viewer window opened!';
+      log('MuJoCo viewer launched', 'ok');
+    } else {
+      if (statusEl) statusEl.textContent = '⚠ Could not open viewer — is DISPLAY set? Try: python3 ik_server.py --viewer';
+      log('Viewer could not open (no display?). Run: python3 ik_server.py --viewer', 'err');
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '✗ ' + e.message;
+  }
+}
+
+function setViewerOpen(open) {
+  viewerOpen = open;
+  const badge = document.getElementById('viewerBadge');
+  const indicator = document.getElementById('viewerIndicator');
+  const sb = document.getElementById('viewerStatusBar');
+  const btn = document.getElementById('viewerToggleBtn');
+  if (open) {
+    badge.textContent = '🖥 Viewer: LIVE';
+    badge.style.background = '#0d2e1a';
+    badge.style.color = 'var(--green)';
+    indicator.style.display = 'flex';
+    if (sb) { sb.textContent = '🖥 3-D Viewer Active'; sb.style.color = 'var(--green)'; }
+    if (btn) { btn.style.borderColor = 'var(--green)'; btn.style.color = 'var(--green)'; }
+    document.getElementById('viewerBanner').style.display = 'none';
+  } else {
+    badge.textContent = '🖥 Viewer: OFF';
+    badge.style.background = '#1a1a2e';
+    badge.style.color = '#6a6a9f';
+    indicator.style.display = 'none';
+    if (sb) { sb.textContent = ''; }
+    if (btn) { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--sub)'; }
+  }
+}
+
+async function checkViewerStatus() {
+  if (!connected) return;
+  try {
+    const r = await api('GET', '/viewer_status');
+    if (r.open !== viewerOpen) setViewerOpen(r.open);
+  } catch(e) { /* ignore */ }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Util
+// ════════════════════════════════════════════════════════════════
+function log(msg, type='') {
+  const el = document.getElementById('pipelineLog');
+  const cls = type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err' : 'log-run';
+  el.innerHTML += `<div class="${cls}">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// Init gripper slider gradient
+setGripper(0);
+renderPipeline();
+
+// Auto-connect attempt on load
+setTimeout(() => { connectServer(); }, 500);
+</script>
+</body>
+</html>

@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SO-ARM101 · Dual Arm Dashboard</title>
+<style>
+:root {
+  --bg:#0b0d12; --card:#12151f; --border:#1e2538;
+  --accent:#4f8fff; --accent2:#ff6030;
+  --green:#2ecc71; --yellow:#f1c40f; --red:#e74c3c; --purple:#9b59b6;
+  --L:#4f8fff; --R:#ff6030;          /* arm colours */
+  --text:#d4dae8; --sub:#5a6480;
+  --font:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);
+     font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── Top bar ─────────────────────────────────────────────────── */
+.topbar{background:#0d1018;border-bottom:1px solid var(--border);
+        padding:0 18px;display:flex;align-items:center;gap:12px;height:46px;flex-shrink:0}
+.topbar h1{font-size:.92rem;font-weight:700;letter-spacing:.04em}
+.badge{padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:700;letter-spacing:.06em}
+.badge-L{background:#1a2e55;color:var(--L)}
+.badge-R{background:#2e1a10;color:var(--R)}
+.badge-ok{background:#0d2e1a;color:var(--green)}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:.3s}
+.conn-dot.ok{background:var(--green)}
+.ml-auto{margin-left:auto}
+
+/* ── Layout ──────────────────────────────────────────────────── */
+.main{display:flex;flex:1;overflow:hidden}
+.arm-panel{width:280px;flex-shrink:0;border-right:1px solid var(--border);
+           overflow-y:auto;display:flex;flex-direction:column}
+.arm-panel.right{border-right:none;border-left:1px solid var(--border)}
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.panel{border-bottom:1px solid var(--border);padding:12px 14px}
+.panel h2{font-size:.68rem;font-weight:700;color:var(--sub);text-transform:uppercase;
+          letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.arm-header{padding:10px 14px 6px;display:flex;align-items:center;gap:8px;
+            border-bottom:1px solid var(--border);font-weight:700;font-size:.85rem}
+.arm-dot{width:10px;height:10px;border-radius:50%}
+
+/* ── IK inputs ───────────────────────────────────────────────── */
+.coord-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.coord-block label{display:block;font-size:.65rem;color:var(--sub);margin-bottom:3px;font-weight:600}
+.coord-block input{width:100%;background:#0f1220;border:1px solid var(--border);
+                   color:var(--text);border-radius:5px;padding:5px 8px;font-size:.8rem;
+                   font-family:monospace;outline:none;transition:.15s}
+.coord-block input:focus{border-color:var(--accent)}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn{border:none;border-radius:5px;padding:6px 11px;cursor:pointer;
+     font-size:.73rem;font-weight:700;transition:.15s;letter-spacing:.02em}
+.btn-L{background:#1a2e55;color:var(--L)} .btn-L:hover{background:#1f3866}
+.btn-R{background:#2e1a10;color:var(--R)} .btn-R:hover{background:#3d220e}
+.btn-sec{background:#1c2235;color:var(--text)} .btn-sec:hover{background:#232b44}
+.btn-success{background:#1a5c32;color:var(--green)} .btn-success:hover{background:#1f6f3c}
+.btn-warn{background:#4a3800;color:var(--yellow)} .btn-warn:hover{background:#5a4500}
+.btn-danger{background:#5c1a1a;color:var(--red)} .btn-danger:hover{background:#6f1f1f}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ── Joint display ───────────────────────────────────────────── */
+.joint-row{display:flex;align-items:center;gap:6px;padding:4px 0;
+           border-bottom:1px solid #151824}
+.joint-row:last-child{border:none}
+.joint-name{width:88px;font-size:.67rem;color:var(--sub);font-weight:600}
+.joint-val{width:46px;font-family:monospace;font-size:.75rem;text-align:right}
+.joint-bar-wrap{flex:1;height:5px;background:#1a2036;border-radius:3px;overflow:hidden}
+.joint-bar{height:100%;border-radius:3px;transition:width .25s}
+.joint-deg{width:40px;font-family:monospace;font-size:.67rem;color:var(--sub);text-align:right}
+
+/* ── EE display ──────────────────────────────────────────────── */
+.ee-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.ee-cell{background:#0f1220;border-radius:5px;padding:6px;text-align:center}
+.ee-cell .lbl{font-size:.62rem;color:var(--sub);font-weight:700;margin-bottom:2px}
+.ee-cell .val{font-size:.9rem;font-weight:700;font-family:monospace}
+
+/* ── Gripper ─────────────────────────────────────────────────── */
+.grip-row{display:flex;align-items:center;gap:8px}
+.grip-slider{-webkit-appearance:none;flex:1;height:7px;border-radius:4px;outline:none}
+.grip-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
+  border-radius:50%;cursor:pointer;border:2px solid #fff}
+
+/* ── Render ──────────────────────────────────────────────────── */
+.render-wrap{flex:1;background:#080a0f;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.render-img{width:100%;height:100%;object-fit:contain;display:block}
+.render-overlay{position:absolute;bottom:10px;left:10px;display:flex;gap:8px;align-items:center}
+.cam-bar{display:flex;gap:5px;align-items:center;padding:5px 9px;
+         background:rgba(0,0,0,.65);border-radius:7px;backdrop-filter:blur(3px)}
+.cam-bar label{font-size:.65rem;color:var(--sub)}
+.cam-bar input[type=range]{-webkit-appearance:none;height:3px;background:#2a3148;border-radius:3px;width:65px}
+.cam-bar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;
+  border-radius:50%;background:var(--accent)}
+
+/* ── Status bar ──────────────────────────────────────────────── */
+.statusbar{background:#0d1018;border-top:1px solid var(--border);
+           padding:5px 14px;display:flex;gap:18px;align-items:center;
+           font-size:.68rem;color:var(--sub);flex-shrink:0}
+.sb-item{display:flex;gap:5px;align-items:center}
+.sb-val{color:var(--text);font-family:monospace;font-weight:600}
+
+/* ── Pipeline builder (center bottom) ───────────────────────── */
+.pipeline-wrap{border-top:1px solid var(--border);display:flex;flex-direction:column;
+               height:310px;flex-shrink:0}
+.pipeline-tabs{display:flex;border-bottom:1px solid var(--border)}
+.ptab{padding:6px 14px;font-size:.72rem;font-weight:700;cursor:pointer;
+      color:var(--sub);border-bottom:2px solid transparent;transition:.15s}
+.ptab.active{color:var(--text);border-color:var(--accent)}
+.ptab-body{display:none;flex:1;overflow:hidden}
+.ptab-body.active{display:flex}
+.pl-left{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.pl-right{width:280px;border-left:1px solid var(--border);display:flex;flex-direction:column}
+.pl-controls{padding:8px 10px;display:flex;gap:6px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.pl-log{flex:1;background:#080a0f;padding:7px 9px;font-family:monospace;
+        font-size:.68rem;color:var(--sub);overflow-y:auto;line-height:1.6}
+.pl-step{background:#0f1220;border:1px solid var(--border);border-radius:6px;
+         padding:7px 10px;display:flex;align-items:center;gap:7px}
+.pl-step-num{width:18px;height:18px;border-radius:50%;background:#1e2538;
+             display:flex;align-items:center;justify-content:center;
+             font-size:.62rem;font-weight:700;color:var(--sub);flex-shrink:0}
+.pl-step-label{flex:1;font-size:.73rem;font-weight:600}
+.pl-step-sub{font-size:.63rem;color:var(--sub)}
+.pl-step-del{background:none;border:none;color:var(--sub);cursor:pointer;
+             font-size:.85rem;padding:2px 4px;border-radius:3px}
+.pl-step-del:hover{color:var(--red)}
+.arm-tag{display:inline-block;padding:1px 6px;border-radius:4px;
+         font-size:.6rem;font-weight:700;margin-right:4px}
+.arm-tag-L{background:#1a2e55;color:var(--L)}
+.arm-tag-R{background:#2e1a10;color:var(--R)}
+.arm-tag-B{background:#1a2e1a;color:var(--green)}
+.log-ok{color:var(--green)} .log-run{color:var(--accent)} .log-err{color:var(--red)}
+
+/* ── Add step quick buttons ──────────────────────────────────── */
+.add-row{display:flex;gap:5px;flex-wrap:wrap;padding:6px 10px;border-top:1px solid var(--border)}
+.add-btn{background:#0f1220;border:1px solid var(--border);border-radius:5px;
+         padding:5px 8px;cursor:pointer;color:var(--text);font-size:.68rem;
+         font-weight:600;transition:.15s}
+.add-btn:hover{border-color:var(--accent)}
+
+/* ── Block status ────────────────────────────────────────────── */
+.block-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #151824}
+.block-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.block-name{width:80px;font-size:.68rem;color:var(--sub)}
+.block-pos{font-family:monospace;font-size:.7rem;color:var(--text)}
+
+/* ── Modal ───────────────────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+               z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:10px;
+       padding:18px;width:340px;display:flex;flex-direction:column;gap:10px}
+.modal h3{font-size:.85rem;font-weight:700}
+.form-row{display:flex;flex-direction:column;gap:3px}
+.form-row label{font-size:.68rem;color:var(--sub);font-weight:600}
+.form-row input,.form-row select{background:#0f1220;border:1px solid var(--border);
+  color:var(--text);border-radius:5px;padding:6px 9px;font-size:.8rem;outline:none}
+.form-row input:focus{border-color:var(--accent)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <h1>SO-ARM101 · Dual Arm</h1>
+  <span class="badge badge-L">LEFT</span>
+  <span class="badge badge-R">RIGHT</span>
+  <span id="connBadge" class="badge" style="background:#1e2538;color:var(--sub)">DISCONNECTED</span>
+  <div class="ml-auto" style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:.68rem;color:var(--sub)">Server:</span>
+    <span id="serverUrl" contenteditable="true"
+          style="font-size:.72rem;font-family:monospace;color:var(--accent);
+                 border:1px solid var(--border);border-radius:4px;padding:2px 7px">
+      http://127.0.0.1:7842</span>
+    <button class="btn btn-sec" onclick="connectServer()">Connect</button>
+    <div class="conn-dot" id="connDot"></div>
+  </div>
+</div>
+
+<!-- ── Main layout ─────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- LEFT ARM PANEL -->
+  <div class="arm-panel">
+    <div class="arm-header">
+      <div class="arm-dot" style="background:var(--L)"></div>
+      Left Arm
+      <span style="font-size:.65rem;color:var(--sub);margin-left:auto">y = +0.25 m</span>
+    </div>
+
+    <!-- EE -->
+    <div class="panel">
+      <h2>📍 End-Effector</h2>
+      <div class="ee-grid">
+        <div class="ee-cell"><div class="lbl">X</div><div class="val" id="L_ee_x" style="color:var(--L)">—</div></div>
+        <div class="ee-cell"><div class="lbl">Y</div><div class="val" id="L_ee_y" style="color:var(--L)">—</div></div>
+        <div class="ee-cell"><div class="lbl">Z</div><div class="val" id="L_ee_z" style="color:var(--L)">—</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--sub)">
+        <span>IK err: <span id="L_ik_err" style="color:var(--green)">—</span></span>
+        <span>iters: <span id="L_ik_iters">—</span></span>
+      </div>
+    </div>
+
+    <!-- IK control -->
+    <div class="panel">
+      <h2>🎯 IK Target <span style="color:var(--L)">(Left)</span></h2>
+      <div class="coord-row">
+        <div class="coord-block"><label>X (m)</label><input id="L_ik_x" type="number" value="0.22" step="0.01"></div>
+        <div class="coord-block"><label>Y (m)</label><input id="L_ik_y" type="number" value="0.10" step="0.01"></div>
+        <div class="coord-block"><label>Z (m)</label><input id="L_ik_z" type="number" value="0.15" step="0.01"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+        <label style="font-size:.68rem;color:var(--sub)">Duration:</label>
+        <input id="L_ik_dur" type="number" value="2.0" step="0.5" style="width:70px;background:#0f1220;border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 7px;font-size:.78rem;outline:none">
+        <span style="font-size:.68rem;color:var(--sub)">s</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-L" style="flex:1" onclick="solveIK('L')">▶ Move Left</button>
+        <button class="btn btn-sec" onclick="nudge('L','x',0.02)">+X</button>
+        <button class="btn btn-sec" onclick="nudge('L','x',-0.02)">-X</button>
+      </div>
+      <div class="btn-row" style="margin-top:5px">
+        <button class="btn btn-sec" onclick="nudge('L','y',0.02)">+Y</button>
+        <button class="btn btn-sec" onclick="nudge('L','y',-0.02)">-Y</button>
+        <button class="btn btn-sec" onclick="nudge('L','z',0.02)">+Z</button>
+        <button class="btn btn-sec" onclick="nudge('L','z',-0.02)">-Z</button>
+        <button class="btn btn-warn" onclick="captureEE('L')">📌 Capture</button>
+      </div>
+    </div>
+
+    <!-- Gripper -->
+    <div class="panel">
+      <h2>✊ Gripper <span style="color:var(--L)">(Left)</span></h2>
+      <div class="grip-row">
+        <span style="font-size:.68rem;color:var(--sub)">Open</span>
+        <input type="range" class="grip-slider" id="L_grip_slider" min="0" max="1" step="0.05" value="0"
+               style="--c:var(--L)" oninput="setGripper('L', this.value)">
+        <span style="font-size:.68rem;color:var(--sub)">Close</span>
+        <span id="L_grip_label" style="font-size:.72rem;font-family:monospace;width:30px;text-align:right">0%</span>
+      </div>
+      <div class="btn-row" style="margin-top:7px">
+        <button class="btn btn-L" onclick="setGripperBtn('L',0)">👐 Open</button>
+        <button class="btn btn-L" onclick="setGripperBtn('L',1)">✊ Close</button>
+        <button class="btn btn-warn" style="margin-left:auto" onclick="homeArm('L')">🏠 Home L</button>
+      </div>
+    </div>
+
+    <!-- Joints -->
+    <div class="panel">
+      <h2>⚙ Joints <span style="color:var(--L)">(Left)</span></h2>
+      <div id="L_joints"></div>
+    </div>
+  </div>
+
+  <!-- CENTER: render + pipeline -->
+  <div class="center">
+    <!-- Render view -->
+    <div class="render-wrap">
+      <img id="renderImg" class="render-img" src="" alt="" style="opacity:0">
+      <div id="renderPlaceholder" style="position:absolute;inset:0;display:flex;align-items:center;
+           justify-content:center;color:var(--sub);font-size:.85rem">
+        Click Connect to start
+      </div>
+      <div class="render-overlay">
+        <div class="cam-bar">
+          <label>Az</label>
+          <input type="range" id="camAz" min="0" max="360" value="180" oninput="updateCam()">
+          <label>El</label>
+          <input type="range" id="camEl" min="-90" max="0" value="-22" oninput="updateCam()">
+          <label>Dist</label>
+          <input type="range" id="camDist" min="0.5" max="3.0" step="0.05" value="1.6" oninput="updateCam()">
+          <button class="btn btn-sec" style="padding:3px 7px;font-size:.65rem" onclick="resetCam()">↺</button>
+        </div>
+        <button class="btn btn-sec" style="font-size:.65rem;padding:4px 8px" onclick="refreshRender()">🖼 Refresh</button>
+        <button class="btn btn-success" style="font-size:.65rem;padding:4px 8px" onclick="openNativeViewer()">🔍 Open MuJoCo Viewer</button>
+        <button class="btn btn-sec" style="font-size:.65rem;padding:4px 8px" onclick="homeArm('both')">🏠 Home Both</button>
+        <button class="btn btn-warn" style="font-size:.65rem;padding:4px 8px" onclick="resetBlocks()">🔄 Reset Blocks</button>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="statusbar">
+      <div class="sb-item">L EE: <span class="sb-val" id="sb_L_ee">—</span></div>
+      <div class="sb-item">R EE: <span class="sb-val" id="sb_R_ee">—</span></div>
+      <div class="sb-item">L err: <span class="sb-val" id="sb_L_err">—</span></div>
+      <div class="sb-item">R err: <span class="sb-val" id="sb_R_err">—</span></div>
+      <div class="sb-item" style="margin-left:auto">
+        Pipeline: <span class="sb-val" id="sb_pipe" style="color:var(--sub)">Idle</span>
+      </div>
+    </div>
+
+    <!-- Pipeline section -->
+    <div class="pipeline-wrap">
+      <div class="pipeline-tabs">
+        <div class="ptab active" onclick="switchTab('steps')">📋 Steps</div>
+        <div class="ptab" onclick="switchTab('presets')">⚡ Presets</div>
+        <div class="ptab" onclick="switchTab('blocks')">📦 Blocks</div>
+        <div style="margin-left:auto;padding:0 10px;display:flex;align-items:center;gap:6px">
+          <span id="pipelineStatus" style="font-size:.7rem;color:var(--sub)">Idle</span>
+          <button class="btn btn-success" id="runBtn" onclick="runPipeline()">▶ Run</button>
+          <button class="btn btn-warn" onclick="clearPipeline()">🗑</button>
+          <button class="btn btn-sec" onclick="exportPipeline()">💾</button>
+        </div>
+      </div>
+
+      <!-- Steps tab -->
+      <div class="ptab-body active" id="tab-steps">
+        <div class="pl-left" id="pipelineList">
+          <div style="color:var(--sub);font-size:.75rem;text-align:center;padding:20px">
+            No steps yet — use Presets or add steps below
+          </div>
+        </div>
+        <div class="pl-right">
+          <div class="pl-controls">
+            <span style="font-size:.68rem;color:var(--sub);width:100%;margin-bottom:2px">Quick add:</span>
+            <button class="add-btn" onclick="quickAdd('move_ik','L')">➕ Move L</button>
+            <button class="add-btn" onclick="quickAdd('move_ik','R')">➕ Move R</button>
+            <button class="add-btn" onclick="quickAdd('gripper','L')">✊ Grip L</button>
+            <button class="add-btn" onclick="quickAdd('gripper','R')">✊ Grip R</button>
+            <button class="add-btn" onclick="quickAdd('wait','both')">⏱ Wait</button>
+            <button class="add-btn" onclick="quickAdd('home','both')">🏠 Home</button>
+            <button class="add-btn" onclick="quickAdd('reset_blocks','both')">🔄 Reset</button>
+          </div>
+          <div class="pl-log" id="pipelineLog">Ready.</div>
+        </div>
+      </div>
+
+      <!-- Presets tab -->
+      <div class="ptab-body" id="tab-presets">
+        <div style="padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1">
+          <div style="font-size:.72rem;color:var(--sub);margin-bottom:4px">
+            Block stacking presets — left arm picks, right arm stacks.
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-success" onclick="loadPreset('stack3')">📦 Stack 3 Blocks (L picks → R stacks)</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-L" onclick="loadPreset('pickplace_L')">Left Pick & Place</button>
+            <button class="btn btn-R" onclick="loadPreset('pickplace_R')">Right Pick & Place</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-sec" onclick="loadPreset('wave_both')">👋 Wave Both</button>
+            <button class="btn btn-sec" onclick="loadPreset('home_both')">🏠 Home Both</button>
+          </div>
+          <div style="font-size:.68rem;color:var(--sub);margin-top:8px;line-height:1.6">
+            <b>Tip:</b> Adjust block positions in the Blocks tab to match your sim,
+            then re-run the stack preset. Use 📌 Capture to grab the current EE
+            position as a pipeline step.
+          </div>
+        </div>
+      </div>
+
+      <!-- Blocks tab -->
+      <div class="ptab-body" id="tab-blocks">
+        <div style="padding:12px;flex:1;overflow-y:auto">
+          <div style="margin-bottom:10px;font-size:.72rem;color:var(--sub)">Current block positions in sim:</div>
+          <div id="blockDisplay"></div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-warn" onclick="resetBlocks()">🔄 Reset Blocks to Start</button>
+          </div>
+          <div style="font-size:.68rem;color:var(--sub);margin-top:10px;line-height:1.6">
+            Block start positions (in scene XML):<br>
+            🔴 Red:   (0.22, +0.06, 0.03)<br>
+            🟢 Green: (0.22,  0.00, 0.03)<br>
+            🔵 Blue:  (0.22, −0.06, 0.03)<br>
+            🟡 Stack zone: (0.30, 0.00, table)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT ARM PANEL -->
+  <div class="arm-panel right">
+    <div class="arm-header">
+      <div class="arm-dot" style="background:var(--R)"></div>
+      Right Arm
+      <span style="font-size:.65rem;color:var(--sub);margin-left:auto">y = −0.25 m</span>
+    </div>
+
+    <div class="panel">
+      <h2>📍 End-Effector</h2>
+      <div class="ee-grid">
+        <div class="ee-cell"><div class="lbl">X</div><div class="val" id="R_ee_x" style="color:var(--R)">—</div></div>
+        <div class="ee-cell"><div class="lbl">Y</div><div class="val" id="R_ee_y" style="color:var(--R)">—</div></div>
+        <div class="ee-cell"><div class="lbl">Z</div><div class="val" id="R_ee_z" style="color:var(--R)">—</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--sub)">
+        <span>IK err: <span id="R_ik_err" style="color:var(--green)">—</span></span>
+        <span>iters: <span id="R_ik_iters">—</span></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>🎯 IK Target <span style="color:var(--R)">(Right)</span></h2>
+      <div class="coord-row">
+        <div class="coord-block"><label>X (m)</label><input id="R_ik_x" type="number" value="0.22" step="0.01"></div>
+        <div class="coord-block"><label>Y (m)</label><input id="R_ik_y" type="number" value="-0.10" step="0.01"></div>
+        <div class="coord-block"><label>Z (m)</label><input id="R_ik_z" type="number" value="0.15" step="0.01"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+        <label style="font-size:.68rem;color:var(--sub)">Duration:</label>
+        <input id="R_ik_dur" type="number" value="2.0" step="0.5" style="width:70px;background:#0f1220;border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 7px;font-size:.78rem;outline:none">
+        <span style="font-size:.68rem;color:var(--sub)">s</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-R" style="flex:1" onclick="solveIK('R')">▶ Move Right</button>
+        <button class="btn btn-sec" onclick="nudge('R','x',0.02)">+X</button>
+        <button class="btn btn-sec" onclick="nudge('R','x',-0.02)">-X</button>
+      </div>
+      <div class="btn-row" style="margin-top:5px">
+        <button class="btn btn-sec" onclick="nudge('R','y',0.02)">+Y</button>
+        <button class="btn btn-sec" onclick="nudge('R','y',-0.02)">-Y</button>
+        <button class="btn btn-sec" onclick="nudge('R','z',0.02)">+Z</button>
+        <button class="btn btn-sec" onclick="nudge('R','z',-0.02)">-Z</button>
+        <button class="btn btn-warn" onclick="captureEE('R')">📌 Capture</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>✊ Gripper <span style="color:var(--R)">(Right)</span></h2>
+      <div class="grip-row">
+        <span style="font-size:.68rem;color:var(--sub)">Open</span>
+        <input type="range" class="grip-slider" id="R_grip_slider" min="0" max="1" step="0.05" value="0"
+               oninput="setGripper('R', this.value)">
+        <span style="font-size:.68rem;color:var(--sub)">Close</span>
+        <span id="R_grip_label" style="font-size:.72rem;font-family:monospace;width:30px;text-align:right">0%</span>
+      </div>
+      <div class="btn-row" style="margin-top:7px">
+        <button class="btn btn-R" onclick="setGripperBtn('R',0)">👐 Open</button>
+        <button class="btn btn-R" onclick="setGripperBtn('R',1)">✊ Close</button>
+        <button class="btn btn-warn" style="margin-left:auto" onclick="homeArm('R')">🏠 Home R</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Joints <span style="color:var(--R)">(Right)</span></h2>
+      <div id="R_joints"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add step modal ───────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Add Step</h3>
+    <div id="modalBody" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-sec" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" onclick="confirmStep()">Add Step</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  Config & state
+// ════════════════════════════════════════════════════════════════
+let SERVER = 'http://127.0.0.1:7842';
+let connected = false;
+let pipeline  = [];
+let pollTimer = null;
+let addingStep = null;  // {type, arm} for modal
+
+const JOINT_NAMES  = ['shoulder_pan','shoulder_lift','elbow_flex','wrist_flex','wrist_roll'];
+const JOINT_LABELS = ['Pan','Lift','Elbow','Wrist F','Wrist R'];
+const JOINT_RANGES = [[-1.92,1.92],[-1.745,1.745],[-1.69,1.69],[-1.658,1.658],[-2.744,2.841]];
+const ARM_COLOR    = {L:'var(--L)', R:'var(--R)'};
+
+// ════════════════════════════════════════════════════════════════
+//  Connection
+// ════════════════════════════════════════════════════════════════
+async function api(method, path, body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json'}};
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(SERVER + path, opts);
+  return r.json();
+}
+
+async function connectServer() {
+  SERVER = document.getElementById('serverUrl').textContent.trim() || SERVER;
+  try {
+    const s = await api('GET', '/state');
+    connected = true;
+    document.getElementById('connDot').classList.add('ok');
+    document.getElementById('connBadge').textContent = 'CONNECTED';
+    document.getElementById('connBadge').className   = 'badge badge-ok';
+    document.getElementById('renderPlaceholder').style.display = 'none';
+    document.getElementById('renderImg').style.opacity = '1';
+    updateStateUI(s);
+    startPolling();
+    refreshRender();
+    plog('✓ Connected to dual-arm server', 'ok');
+  } catch(e) {
+    plog('✗ Cannot connect: ' + e.message, 'err');
+  }
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if (!connected) return;
+    try { 
+      updateStateUI(await api('GET', '/state'));
+      // Auto-refresh render every poll cycle
+      const r = await api('GET', '/render');
+      if (r.png) updateRender(r.png);
+    } catch(e) {}
+  }, 600);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  State UI update
+// ════════════════════════════════════════════════════════════════
+function updateStateUI(s) {
+  for (const arm of ['L','R']) {
+    const a = s.arms?.[arm];
+    if (!a) continue;
+    const [x,y,z] = a.ee;
+    document.getElementById(`${arm}_ee_x`).textContent = x.toFixed(4);
+    document.getElementById(`${arm}_ee_y`).textContent = y.toFixed(4);
+    document.getElementById(`${arm}_ee_z`).textContent = z.toFixed(4);
+    document.getElementById(`sb_${arm}_ee`).textContent =
+      `[${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}]`;
+
+    const errEl = document.getElementById(`${arm}_ik_err`);
+    errEl.textContent = a.ik_err_mm + ' mm';
+    errEl.style.color = a.ik_err_mm < 5 ? 'var(--green)' : a.ik_err_mm < 15 ? 'var(--yellow)' : 'var(--red)';
+    document.getElementById(`${arm}_ik_iters`).textContent = a.ik_iters;
+    document.getElementById(`sb_${arm}_err`).textContent = a.ik_err_mm + ' mm';
+
+    // Joints
+    const col = ARM_COLOR[arm];
+    document.getElementById(`${arm}_joints`).innerHTML = JOINT_NAMES.map((n,i) => {
+      const key = `${arm}_${n}`;
+      const v   = a.joints?.[key] ?? 0;
+      const [lo,hi] = JOINT_RANGES[i];
+      const pct = ((v-lo)/(hi-lo)*100).toFixed(1);
+      return `<div class="joint-row">
+        <div class="joint-name">${JOINT_LABELS[i]}</div>
+        <div class="joint-val" style="color:${col}">${v.toFixed(3)}</div>
+        <div class="joint-bar-wrap"><div class="joint-bar" style="width:${pct}%;background:${col}"></div></div>
+        <div class="joint-deg">${(v*180/Math.PI).toFixed(1)}°</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Blocks
+  if (s.blocks) {
+    const colors = {block_red:'#e74c3c',block_green:'#2ecc71',block_blue:'#4f8fff'};
+    document.getElementById('blockDisplay').innerHTML =
+      Object.entries(s.blocks).map(([name,pos]) =>
+        `<div class="block-row">
+          <div class="block-dot" style="background:${colors[name]||'#888'}"></div>
+          <div class="block-name">${name.replace('block_','')}</div>
+          <div class="block-pos">[${pos.map(v=>v.toFixed(3)).join(', ')}]</div>
+        </div>`
+      ).join('');
+  }
+
+  // Pipeline
+  const running = s.pipeline_running;
+  document.getElementById('pipelineStatus').textContent = running ? '▶ Running…' : 'Idle';
+  document.getElementById('pipelineStatus').style.color  = running ? 'var(--accent)' : 'var(--sub)';
+  document.getElementById('sb_pipe').textContent = running ? 'Running' : 'Idle';
+  document.getElementById('sb_pipe').style.color  = running ? 'var(--accent)' : 'var(--sub)';
+
+  if (s.pipeline_log?.length) {
+    const el = document.getElementById('pipelineLog');
+    el.innerHTML = s.pipeline_log.map(l => {
+      const cls = l.startsWith('✅') ? 'log-ok' : l.startsWith('▶') ? 'log-run'
+                : l.startsWith('✗') ? 'log-err' : '';
+      return `<div class="${cls}">${l}</div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  IK
+// ════════════════════════════════════════════════════════════════
+async function solveIK(arm) {
+  if (!connected) { alert('Connect first'); return; }
+  const x = parseFloat(document.getElementById(`${arm}_ik_x`).value);
+  const y = parseFloat(document.getElementById(`${arm}_ik_y`).value);
+  const z = parseFloat(document.getElementById(`${arm}_ik_z`).value);
+  const dur = parseFloat(document.getElementById(`${arm}_ik_dur`).value);
+  try {
+    const r = await api('POST', '/ik', {arm, x, y, z, smooth:true, duration:dur});
+    if (r.png) updateRender(r.png);
+    plog(`[${arm}] IK → [${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}] err=${r.err_mm}mm`, 'ok');
+  } catch(e) { plog(`IK failed: ${e.message}`, 'err'); }
+}
+
+async function homeArm(arm) {
+  if (!connected) return;
+  await api('POST', '/home', {arm});
+  refreshRender();
+  plog(`→ Home [${arm}]`, 'ok');
+}
+
+function nudge(arm, axis, delta) {
+  const el = document.getElementById(`${arm}_ik_${axis}`);
+  el.value = (parseFloat(el.value) + delta).toFixed(3);
+  solveIK(arm);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Gripper
+// ════════════════════════════════════════════════════════════════
+async function setGripper(arm, v) {
+  v = parseFloat(v);
+  document.getElementById(`${arm}_grip_label`).textContent = Math.round(v*100) + '%';
+  const grad = `linear-gradient(to right, ${arm==='L'?'var(--L)':'var(--R)'} ${v*100}%, #1a2036 ${v*100}%)`;
+  document.getElementById(`${arm}_grip_slider`).style.background = grad;
+  if (!connected) return;
+  await api('POST', '/gripper', {arm, value: v});
+}
+async function setGripperBtn(arm, v) {
+  document.getElementById(`${arm}_grip_slider`).value = v;
+  await setGripper(arm, v);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Render
+// ════════════════════════════════════════════════════════════════
+async function refreshRender() {
+  if (!connected) return;
+  const r = await api('GET', '/render');
+  if (r.png) updateRender(r.png);
+}
+function updateRender(b64) {
+  document.getElementById('renderImg').src = 'data:image/png;base64,' + b64;
+}
+let camTO = null;
+async function updateCam() {
+  clearTimeout(camTO);
+  camTO = setTimeout(async () => {
+    if (!connected) return;
+    await api('POST', '/setcam', {
+      az:   parseFloat(document.getElementById('camAz').value),
+      el:   parseFloat(document.getElementById('camEl').value),
+      dist: parseFloat(document.getElementById('camDist').value),
+    });
+    refreshRender();
+  }, 150);
+}
+function resetCam() {
+  document.getElementById('camAz').value=180;
+  document.getElementById('camEl').value=-22;
+  document.getElementById('camDist').value=1.6;
+  updateCam();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Native MuJoCo Viewer
+// ════════════════════════════════════════════════════════════════
+async function openNativeViewer() {
+  if (!connected) return;
+  try {
+    const r = await api('POST', '/open_viewer');
+    if (r.ok) {
+      plog('✓ MuJoCo native viewer opened', 'ok');
+    } else {
+      plog('⚠ Viewer status: ' + JSON.stringify(r), 'warn');
+    }
+  } catch(e) {
+    plog('✗ Failed to open viewer: ' + e.message, 'err');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Blocks
+// ════════════════════════════════════════════════════════════════
+async function resetBlocks() {
+  if (!connected) return;
+  await api('POST', '/reset_blocks');
+  refreshRender();
+  plog('Blocks reset to start positions', 'ok');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Pipeline
+// ════════════════════════════════════════════════════════════════
+function renderPipeline() {
+  const el = document.getElementById('pipelineList');
+  if (pipeline.length === 0) {
+    el.innerHTML = '<div style="color:var(--sub);font-size:.75rem;text-align:center;padding:20px">No steps — use Presets or add below</div>';
+    return;
+  }
+  el.innerHTML = pipeline.map((s,i) => {
+    const arm  = s.arm || 'L';
+    const tagCls = arm==='L'?'arm-tag-L':arm==='R'?'arm-tag-R':'arm-tag-B';
+    const tagLbl = arm==='both'?'BOTH':arm;
+    let sub = '';
+    if (s.type==='move_ik')    sub = `[${s.x},${s.y},${s.z}] ${s.duration||2}s`;
+    else if (s.type==='gripper') sub = s.value>0.5?'CLOSE':'OPEN';
+    else if (s.type==='wait')  sub = `${s.duration}s`;
+    else if (s.type==='home')  sub = 'joints → 0';
+    else if (s.type==='reset_blocks') sub = 'reset blocks';
+    const parallel = s.parallel ? ' ‖' : '';
+    return `<div class="pl-step">
+      <div class="pl-step-num">${i+1}</div>
+      <div style="flex:1">
+        <div class="pl-step-label">
+          <span class="arm-tag ${tagCls}">${tagLbl}</span>
+          <span style="font-size:.7rem">${s.type.replace('_',' ')}${parallel}</span>
+          ${s.label ? `<span style="color:var(--sub);font-size:.67rem"> — ${s.label}</span>` : ''}
+        </div>
+        <div class="pl-step-sub">${sub}</div>
+      </div>
+      <button class="pl-step-del" onclick="deleteStep(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteStep(i) { pipeline.splice(i,1); renderPipeline(); }
+function clearPipeline() { pipeline=[]; renderPipeline(); document.getElementById('pipelineLog').innerHTML='Ready.'; }
+
+function captureEE(arm) {
+  const x = parseFloat(document.getElementById(`${arm}_ee_x`).textContent)||0;
+  const y = parseFloat(document.getElementById(`${arm}_ee_y`).textContent)||0;
+  const z = parseFloat(document.getElementById(`${arm}_ee_z`).textContent)||0;
+  pipeline.push({arm, type:'move_ik', label:`Captured EE`, x, y, z, duration:2.0, settle_time:0.8});
+  renderPipeline();
+  plog(`[${arm}] Captured EE [${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}]`, 'ok');
+}
+
+async function runPipeline() {
+  if (!connected) { alert('Connect first'); return; }
+  if (!pipeline.length) { alert('No steps'); return; }
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = '⏳';
+  document.getElementById('pipelineLog').innerHTML = '<div class="log-run">▶ Starting…</div>';
+  try {
+    await api('POST', '/pipeline', {steps: pipeline});
+    plog('Pipeline running on server…', 'ok');
+    await pollPipelineDone();
+  } catch(e) {
+    plog('Pipeline error: ' + e.message, 'err');
+  } finally {
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').textContent = '▶ Run';
+  }
+}
+
+async function pollPipelineDone() {
+  while (true) {
+    await new Promise(r => setTimeout(r, 700));
+    try {
+      const s = await api('GET', '/state');
+      updateStateUI(s);
+      if (!s.pipeline_running) { refreshRender(); break; }
+    } catch(e) { break; }
+  }
+}
+
+function exportPipeline() {
+  const blob = new Blob([JSON.stringify({pipeline, exported:new Date().toISOString()},null,2)],
+                        {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dual_pipeline.json'; a.click();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Presets
+// ════════════════════════════════════════════════════════════════
+function loadPreset(name) {
+  // Block pick heights:
+  //   Approach above: z=0.14
+  //   Grasp:          z=0.055 (top of 50mm block on table surface z=0)
+  //   Carry height:   z=0.18
+  // Stack heights (blocks are 50mm = 0.05m tall):
+  //   Place 1st on table: z=0.055
+  //   Place 2nd on 1st:   z=0.105
+  //   Place 3rd on 2nd:   z=0.155
+
+  const D = 2.0;   // default move duration
+  const S = 0.8;   // default settle
+
+  const presets = {
+    // ── Left arm picks red block → places at stack zone
+    // ── Right arm picks green block → stacks on red
+    // ── Left arm picks blue block → stacks on green
+    // (sequential — edit steps to run parallel for speed)
+    stack3: [
+      {arm:'both', type:'home', label:'Home both arms'},
+      {arm:'both', type:'gripper', label:'Open both grippers', value:0.0, settle_time:1.5},
+
+      // ── Pick red (left arm) ──────────────────────────────────
+      {arm:'L', type:'move_ik', label:'L approach red', x:0.18, y:0.06, z:0.14, duration:D, settle_time:S},
+      {arm:'L', type:'move_ik', label:'L descend red',  x:0.18, y:0.06, z:0.035, wrist_roll:1.5708, duration:1.5, settle_time:S},
+      {arm:'L', type:'gripper', label:'L grasp red',    value:1.0, settle_time:2.5},
+      {arm:'L', type:'move_ik', label:'L lift red',     x:0.18, y:0.06, z:0.18, duration:1.5, settle_time:S},
+      {arm:'L', type:'move_ik', label:'L carry to stack zone', x:0.28, y:0.0, z:0.18, duration:D, settle_time:S},
+      {arm:'L', type:'move_ik', label:'L place red (1st)', x:0.28, y:0.0, z:0.035, wrist_roll:1.5708, duration:1.5, settle_time:S},
+      {arm:'L', type:'gripper', label:'L release red',  value:0.0, settle_time:1.5},
+      {arm:'L', type:'move_ik', label:'L retreat',      x:0.28, y:0.0, z:0.18, duration:1.2, settle_time:0.5},
+      {arm:'L', type:'home', label:'L return home'},
+
+      // ── Pick green (right arm) ───────────────────────────────
+      {arm:'R', type:'move_ik', label:'R approach green', x:0.18, y:0.0, z:0.14, duration:D, settle_time:S},
+      {arm:'R', type:'move_ik', label:'R descend green',  x:0.18, y:0.0, z:0.035, wrist_roll:-1.5708, duration:1.5, settle_time:S},
+      {arm:'R', type:'gripper', label:'R grasp green',    value:1.0, settle_time:2.5},
+      {arm:'R', type:'move_ik', label:'R lift green',     x:0.18, y:0.0, z:0.18, duration:1.5, settle_time:S},
+      {arm:'R', type:'move_ik', label:'R carry to stack', x:0.28, y:0.0, z:0.20, duration:D, settle_time:S},
+      {arm:'R', type:'move_ik', label:'R place green (2nd on red)', x:0.28, y:0.0, z:0.085, wrist_roll:-1.5708, duration:1.5, settle_time:S},
+      {arm:'R', type:'gripper', label:'R release green',  value:0.0, settle_time:1.5},
+      {arm:'R', type:'move_ik', label:'R retreat',        x:0.28, y:0.0, z:0.20, duration:1.2, settle_time:0.5},
+      {arm:'R', type:'home', label:'R return home'},
+
+      // ── Pick blue (left arm) ─────────────────────────────────
+      {arm:'L', type:'move_ik', label:'L approach blue', x:0.18, y:-0.06, z:0.14, duration:D, settle_time:S},
+      {arm:'L', type:'move_ik', label:'L descend blue',  x:0.18, y:-0.06, z:0.035, wrist_roll:1.5708, duration:1.5, settle_time:S},
+      {arm:'L', type:'gripper', label:'L grasp blue',    value:1.0, settle_time:2.5},
+      {arm:'L', type:'move_ik', label:'L lift blue',     x:0.18, y:-0.06, z:0.20, duration:1.5, settle_time:S},
+      {arm:'L', type:'move_ik', label:'L carry to stack', x:0.28, y:0.0, z:0.25, duration:D, settle_time:S},
+      {arm:'L', type:'move_ik', label:'L place blue (3rd)', x:0.28, y:0.0, z:0.135, wrist_roll:1.5708, duration:1.5, settle_time:S},
+      {arm:'L', type:'gripper', label:'L release blue',  value:0.0, settle_time:1.5},
+      {arm:'L', type:'move_ik', label:'L retreat',       x:0.28, y:0.0, z:0.25, duration:1.2, settle_time:0.5},
+      {arm:'L', type:'home', label:'L return home'},
+
+      {arm:'both', type:'home', label:'Return both home'},
+    ],
+
+    pickplace_L: [
+      {arm:'L', type:'home', label:'Home L'},
+      {arm:'L', type:'gripper', label:'Open', value:0.0, settle_time:1.5},
+      {arm:'L', type:'move_ik', label:'Approach', x:0.18, y:0.06, z:0.14, duration:D, settle_time:S},
+      {arm:'L', type:'move_ik', label:'Descend',  x:0.18, y:0.06, z:0.035, wrist_roll:1.5708, duration:1.5, settle_time:S},
+      {arm:'L', type:'gripper', label:'Grasp',    value:1.0, settle_time:2.5},
+      {arm:'L', type:'move_ik', label:'Lift',     x:0.18, y:0.06, z:0.18, duration:1.5, settle_time:S},
+      {arm:'L', type:'move_ik', label:'Carry',    x:0.28, y:0.0,  z:0.18, duration:D,   settle_time:S},
+      {arm:'L', type:'move_ik', label:'Place',    x:0.28, y:0.0,  z:0.035, wrist_roll:1.5708, duration:1.5, settle_time:S},
+      {arm:'L', type:'gripper', label:'Release',  value:0.0, settle_time:1.5},
+      {arm:'L', type:'move_ik', label:'Retreat',  x:0.28, y:0.0,  z:0.18, duration:1.2, settle_time:0.5},
+      {arm:'L', type:'home', label:'Home L'},
+    ],
+
+    pickplace_R: [
+      {arm:'R', type:'home', label:'Home R'},
+      {arm:'R', type:'gripper', label:'Open', value:0.0, settle_time:1.5},
+      {arm:'R', type:'move_ik', label:'Approach', x:0.18, y:-0.06, z:0.14, duration:D, settle_time:S},
+      {arm:'R', type:'move_ik', label:'Descend',  x:0.18, y:-0.06, z:0.035, wrist_roll:-1.5708, duration:1.5, settle_time:S},
+      {arm:'R', type:'gripper', label:'Grasp',    value:1.0, settle_time:2.5},
+      {arm:'R', type:'move_ik', label:'Lift',     x:0.18, y:-0.06, z:0.18, duration:1.5, settle_time:S},
+      {arm:'R', type:'move_ik', label:'Carry',    x:0.28, y:0.0,  z:0.18, duration:D,   settle_time:S},
+      {arm:'R', type:'move_ik', label:'Place',    x:0.28, y:0.0,  z:0.035, wrist_roll:-1.5708, duration:1.5, settle_time:S},
+      {arm:'R', type:'gripper', label:'Release',  value:0.0, settle_time:1.5},
+      {arm:'R', type:'move_ik', label:'Retreat',  x:0.28, y:0.0,  z:0.18, duration:1.2, settle_time:0.5},
+      {arm:'R', type:'home', label:'Home R'},
+    ],
+
+    wave_both: [
+      {arm:'both', type:'home', label:'Home'},
+      {arm:'L', type:'move_ik', label:'L up',    x:0.20, y:0.10, z:0.35, duration:1.5, settle_time:0.4},
+      {arm:'R', type:'move_ik', label:'R up',    x:0.20, y:-0.10,z:0.35, duration:1.5, settle_time:0.4},
+      {arm:'L', type:'move_ik', label:'L wave1', x:0.20, y:0.18, z:0.30, duration:0.7, settle_time:0.2},
+      {arm:'R', type:'move_ik', label:'R wave1', x:0.20, y:-0.18,z:0.30, duration:0.7, settle_time:0.2},
+      {arm:'L', type:'move_ik', label:'L wave2', x:0.20, y:0.08, z:0.32, duration:0.7, settle_time:0.2},
+      {arm:'R', type:'move_ik', label:'R wave2', x:0.20, y:-0.08,z:0.32, duration:0.7, settle_time:0.2},
+      {arm:'L', type:'move_ik', label:'L wave3', x:0.20, y:0.18, z:0.30, duration:0.7, settle_time:0.2},
+      {arm:'R', type:'move_ik', label:'R wave3', x:0.20, y:-0.18,z:0.30, duration:0.7, settle_time:0.2},
+      {arm:'both', type:'home', label:'Home'},
+    ],
+
+    home_both: [
+      {arm:'both', type:'gripper', label:'Open both', value:0.0, settle_time:1.5},
+      {arm:'both', type:'home',    label:'Home both'},
+    ],
+  };
+
+  pipeline = [...(presets[name] || [])];
+  renderPipeline();
+  plog(`Loaded preset: ${name} (${pipeline.length} steps)`, 'ok');
+  switchTab('steps');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Quick add step modal
+// ════════════════════════════════════════════════════════════════
+function quickAdd(type, defaultArm) {
+  addingStep = {type, arm: defaultArm};
+  const modal = document.getElementById('modalOverlay');
+  const title = document.getElementById('modalTitle');
+  const body  = document.getElementById('modalBody');
+  modal.classList.add('show');
+
+  const armSel = `<div class="form-row"><label>Arm</label>
+    <select id="sf_arm">
+      <option value="L" ${defaultArm==='L'?'selected':''}>Left</option>
+      <option value="R" ${defaultArm==='R'?'selected':''}>Right</option>
+      <option value="both" ${defaultArm==='both'?'selected':''}>Both</option>
+    </select></div>`;
+  const labelField = `<div class="form-row"><label>Label (optional)</label><input id="sf_label" value=""></div>`;
+
+  if (type === 'move_ik') {
+    title.textContent = '➕ Add Move Step';
+    body.innerHTML = armSel + labelField +
+      `<div class="form-row"><label>X (m)</label><input id="sf_x" type="number" value="0.22" step="0.01"></div>
+       <div class="form-row"><label>Y (m)</label><input id="sf_y" type="number" value="0.10" step="0.01"></div>
+       <div class="form-row"><label>Z (m)</label><input id="sf_z" type="number" value="0.15" step="0.01"></div>
+       <div class="form-row"><label>Duration (s)</label><input id="sf_dur" type="number" value="2.0" step="0.5"></div>
+       <div class="form-row"><label>Settle (s)</label><input id="sf_settle" type="number" value="0.8" step="0.1"></div>`;
+  } else if (type === 'gripper') {
+    title.textContent = '✊ Add Gripper Step';
+    body.innerHTML = armSel + labelField +
+      `<div class="form-row"><label>Value (0=open, 1=close)</label>
+       <input id="sf_gval" type="number" value="1.0" min="0" max="1" step="0.1"></div>
+       <div class="form-row"><label>Settle (s)</label><input id="sf_settle" type="number" value="0.8" step="0.1"></div>`;
+  } else if (type === 'wait') {
+    title.textContent = '⏱ Add Wait Step';
+    body.innerHTML = labelField +
+      `<div class="form-row"><label>Duration (s)</label><input id="sf_dur" type="number" value="1.0" step="0.5"></div>`;
+  } else if (type === 'home') {
+    title.textContent = '🏠 Add Home Step';
+    body.innerHTML = armSel + labelField;
+  } else if (type === 'reset_blocks') {
+    title.textContent = '🔄 Reset Blocks';
+    body.innerHTML = labelField;
+  }
+}
+
+function confirmStep() {
+  const {type} = addingStep;
+  const arm   = document.getElementById('sf_arm')?.value || 'L';
+  const label = document.getElementById('sf_label')?.value || '';
+  let step;
+  if (type === 'move_ik')
+    step = {arm, type, label,
+            x:+document.getElementById('sf_x').value,
+            y:+document.getElementById('sf_y').value,
+            z:+document.getElementById('sf_z').value,
+            duration:+document.getElementById('sf_dur').value,
+            settle_time:+document.getElementById('sf_settle').value};
+  else if (type === 'gripper')
+    step = {arm, type, label,
+            value:+document.getElementById('sf_gval').value,
+            settle_time:+document.getElementById('sf_settle').value};
+  else if (type === 'wait')
+    step = {arm:'both', type, label, duration:+document.getElementById('sf_dur').value};
+  else if (type === 'home')
+    step = {arm, type, label};
+  else if (type === 'reset_blocks')
+    step = {arm:'both', type, label};
+
+  if (step) { pipeline.push(step); renderPipeline(); }
+  closeModal();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  addingStep = null;
+}
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+// ════════════════════════════════════════════════════════════════
+//  Tabs
+// ════════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.ptab').forEach((t,i) => {
+    const names = ['steps','presets','blocks'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.ptab-body').forEach(b => {
+    b.classList.toggle('active', b.id === `tab-${name}`);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Log
+// ════════════════════════════════════════════════════════════════
+function plog(msg, type='') {
+  const el = document.getElementById('pipelineLog');
+  const cls = type==='ok'?'log-ok':type==='err'?'log-err':'log-run';
+  el.innerHTML += `<div class="${cls}">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Init
+// ════════════════════════════════════════════════════════════════
+setGripper('L', 0); setGripper('R', 0);
+renderPipeline();
+setTimeout(() => connectServer(), 500);
+</script>
+</body>
+</html>

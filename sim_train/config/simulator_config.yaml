@@ -1,0 +1,75 @@
+# Simulation Configuration
+# Customize this file to adjust simulator behavior
+
+simulation:
+  # Physics simulation parameters
+  timestep: 0.002           # Simulation timestep (seconds)
+  gravity: [0, 0, -9.81]   # Gravity vector
+  iterations: 50            # MuJoCo solver iterations
+  
+  # Arm parameters
+  num_joints: 6             # Number of joints (not including gripper)
+  num_actuators: 8          # Total actuators (joints + gripper)
+
+controller:
+  # DualSense controller settings
+  enabled: true             # Enable controller input
+  joystick_id: 0            # Joystick device index
+  deadzone: 0.1             # Analog stick deadzone (0-1)
+  joint_speed: 1.0          # Multiplier for joint command speed
+  
+  # Mapping configuration
+  # Can be customized in controller.py ControllerMapper class
+  mapping:
+    left_stick_x: shoulder_pan
+    left_stick_y: shoulder_lift
+    right_stick_x: wrist_roll
+    right_stick_y: elbow
+
+recording:
+  # Motion recording settings
+  directory: "recordings"
+  # Format: HDF5 compressed with gzip
+  compression: "gzip"
+  
+  # Auto-save interval (0 = no autosave)
+  autosave_interval: 0
+  
+  # Frame recording rate (Hz)
+  # If 0, records every simulation frame
+  record_framerate: 0
+
+visualization:
+  # Viewer settings
+  show_joint_info: true     # Display joint information
+  show_contacts: false      # Display contact forces
+  show_velocities: false    # Display velocity vectors
+  
+  # Camera settings
+  distance: 2.0             # Camera distance from target
+  elevation: 20             # Camera elevation angle (degrees)
+  azimuth: 45               # Camera azimuth angle (degrees)
+
+arm:
+  # Arm-specific parameters
+  home_position: [0, 0, 0, 0, 0, 0]  # Home position joint angles (radians)
+  
+  # Joint limits (radians)
+  joint_limits:
+    shoulder_pan: [-3.14159, 3.14159]
+    shoulder_lift: [-1.57, 1.57]
+    elbow: [-3.14159, 0]
+    wrist1: [-3.14159, 3.14159]
+    wrist2: [-3.14159, 3.14159]
+    wrist3: [-3.14159, 3.14159]
+  
+  # Velocity limits (rad/s)
+  velocity_limits:
+    default: 2.0
+    gripper: 1.0
+
+logging:
+  # Logging configuration
+  level: "INFO"             # DEBUG, INFO, WARNING, ERROR
+  file: "sim_train.log"     # Log file path
+  console: true             # Print to console
