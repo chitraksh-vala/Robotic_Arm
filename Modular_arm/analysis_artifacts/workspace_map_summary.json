@@ -1,0 +1,116 @@
+﻿[
+    {
+        "Name":  "downward",
+        "Phi_degrees":  -90,
+        "Coarse_grid_points":  10611,
+        "Coarse_counts":  [
+                              {
+                                  "Code":  1,
+                                  "Count":  4859
+                              },
+                              {
+                                  "Code":  3,
+                                  "Count":  1065
+                              },
+                              {
+                                  "Code":  0,
+                                  "Count":  4501
+                              },
+                              {
+                                  "Code":  4,
+                                  "Count":  186
+                              }
+                          ],
+        "Refined_grid_points":  261051,
+        "Refined_reachable_points":  146443,
+        "Refined_reachable_percent":  56.1,
+        "Refined_counts":  {
+                               "Geometrically_unreachable":  110023,
+                               "Negative_only":  120128,
+                               "Positive_only":  0,
+                               "Both_branches":  26315,
+                               "Joint_limit_excluded":  4585
+                           },
+        "Key_Z_slices":  [
+                             {
+                                 "Z_mm":  0,
+                                 "Min_reachable_R_mm":  200,
+                                 "Max_reachable_R_mm":  534
+                             },
+                             {
+                                 "Z_mm":  180,
+                                 "Min_reachable_R_mm":  200,
+                                 "Max_reachable_R_mm":  530
+                             },
+                             {
+                                 "Z_mm":  650,
+                                 "Min_reachable_R_mm":  null,
+                                 "Max_reachable_R_mm":  null
+                             }
+                         ],
+        "Files":  {
+                      "Coarse_csv":  "C:\\Users\\baps\\Desktop\\Bits\\Bits 3-1\\ERC\\Robotic_Arm\\Modular_arm\\workspace_map_downward_5mm.csv",
+                      "Svg":  "C:\\Users\\baps\\Desktop\\Bits\\Bits 3-1\\ERC\\Robotic_Arm\\Modular_arm\\workspace_map_downward.svg",
+                      "Refined_envelope_csv":  "C:\\Users\\baps\\Desktop\\Bits\\Bits 3-1\\ERC\\Robotic_Arm\\Modular_arm\\workspace_envelope_downward_1mm.csv"
+                  }
+    },
+    {
+        "Name":  "horizontal",
+        "Phi_degrees":  0,
+        "Coarse_grid_points":  10611,
+        "Coarse_counts":  [
+                              {
+                                  "Code":  4,
+                                  "Count":  870
+                              },
+                              {
+                                  "Code":  1,
+                                  "Count":  315
+                              },
+                              {
+                                  "Code":  3,
+                                  "Count":  7888
+                              },
+                              {
+                                  "Code":  2,
+                                  "Count":  525
+                              },
+                              {
+                                  "Code":  0,
+                                  "Count":  1013
+                              }
+                          ],
+        "Refined_grid_points":  261051,
+        "Refined_reachable_points":  216090,
+        "Refined_reachable_percent":  82.78,
+        "Refined_counts":  {
+                               "Geometrically_unreachable":  24292,
+                               "Negative_only":  7638,
+                               "Positive_only":  12873,
+                               "Both_branches":  195579,
+                               "Joint_limit_excluded":  20669
+                           },
+        "Key_Z_slices":  [
+                             {
+                                 "Z_mm":  0,
+                                 "Min_reachable_R_mm":  213,
+                                 "Max_reachable_R_mm":  600
+                             },
+                             {
+                                 "Z_mm":  180,
+                                 "Min_reachable_R_mm":  286,
+                                 "Max_reachable_R_mm":  600
+                             },
+                             {
+                                 "Z_mm":  650,
+                                 "Min_reachable_R_mm":  200,
+                                 "Max_reachable_R_mm":  365
+                             }
+                         ],
+        "Files":  {
+                      "Coarse_csv":  "C:\\Users\\baps\\Desktop\\Bits\\Bits 3-1\\ERC\\Robotic_Arm\\Modular_arm\\workspace_map_horizontal_5mm.csv",
+                      "Svg":  "C:\\Users\\baps\\Desktop\\Bits\\Bits 3-1\\ERC\\Robotic_Arm\\Modular_arm\\workspace_map_horizontal.svg",
+                      "Refined_envelope_csv":  "C:\\Users\\baps\\Desktop\\Bits\\Bits 3-1\\ERC\\Robotic_Arm\\Modular_arm\\workspace_envelope_horizontal_1mm.csv"
+                  }
+    }
+]

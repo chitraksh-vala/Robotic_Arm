@@ -1,107 +1,119 @@
-# Custom Robotic Arm - Preliminary Requirements Baseline
+# Custom Robotic Arm - Essential Requirements
 
-Status definitions:
+Status: **Confirmed** = selected requirement; **Provisional** = current design target;
+**TBD/Validation required** = must be resolved before design freeze.
 
-| Topic / item | Plan / execution description | Status |
-|---|---|---|
-| Confirmed | Explicitly provided by the project team or fixed by the approved BOM. | Confirmed |
-| Provisional | Initial engineering target to use for concept development; review before detailed sizing. | Provisional |
-| TBD | Information that must be defined during a later design step. | TBD |
-| Validation required | A value or compatibility condition that must be checked before design freeze. | Validation required |
-
-## 1. Configuration and scope
+## 1. Architecture and scope
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| System configuration | Use five revolute arm joints plus one actuated gripper DOF. | Confirmed |
-| J1 - base yaw | Rotate the complete arm about the vertical base axis. | Confirmed |
-| J2 - shoulder pitch | Raise and lower the main arm from the shoulder. | Confirmed |
-| J3 - elbow pitch | Extend and retract the arm through elbow rotation. | Confirmed |
-| J4 - wrist pitch | Control tool elevation/approach angle. | Confirmed |
-| J5 - wrist/tool roll | Rotate the tool about its longitudinal axis. | Confirmed |
-| G1 - gripper DOF | Operate gripper opening/closing. G1 is not part of the five-joint arm kinematic chain. | Confirmed |
-| Current gripper scope | Develop the mechanical gripper first, followed by the pneumatic soft gripper. | Confirmed |
-| Future grippers | Keep the modular interface compatible with future vacuum and electromagnetic tools, but do not design those grippers in the current phase. | Provisional |
+| Configuration | Five arm joints plus one gripper DOF, using the SO-ARM101 arrangement: J1 yaw, J2/J3/J4 pitch, J5 tool roll, G1 gripper. | Confirmed |
+| Axis geometry | J1/J2 intersect at the shoulder centre; J2/J3/J4 are parallel; J4/J5 intersect at the wrist centre. | Confirmed |
+| Kinematic convention | Standard DH for J1-J5: `Rz(theta) Tz(d) Tx(a) Rx(alpha)`. G1 is outside the arm-pose chain. | Confirmed |
+| Mounting and coordinates | Fixed upright bench mount. Origin at the J1 axis on the bench; +Z up, +X forward and +Y left. | Confirmed |
+| Gripper scope | Develop the mechanical gripper first, then the pneumatic soft gripper. Preserve future modular compatibility with vacuum and electromagnetic tools. | Confirmed |
 
-## 2. Approved actuator and power allocation
+## 2. Approved hardware allocation
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| J1 actuator | Use one Rtelligent 42AM08 NEMA 17 stepper, one RMCS-1120 drive, one external gearbox and one Omron incremental encoder. | Confirmed |
-| J2 actuator | Use one Rtelligent 42AM08 NEMA 17 stepper, one RMCS-1120 drive, one external gearbox and one Omron incremental encoder. | Confirmed |
-| J3 actuator | Use one Rtelligent 42AM08 NEMA 17 stepper, one RMCS-1120 drive, one external gearbox and one Omron incremental encoder. | Confirmed |
-| Stepper holding torque | Use 0.71 N.m as the authoritative holding-torque value from the linked product specification. | Confirmed |
-| J4 actuator | Use one Waveshare ST3215 serial bus servo. | Confirmed |
-| J5 actuator | Use one Waveshare ST3215 serial bus servo. | Confirmed |
-| Mechanical gripper actuator | Use the third Waveshare ST3215 serial bus servo for G1. | Confirmed |
-| Stepper subsystem supply | Use the approved 24 V supply for the RMCS-1120 drives and NEMA 17 motors. | Confirmed |
-| Servo and pneumatic supply | Use the approved 12 V supply for the ST3215 servos and 12 V pneumatic hardware. | Confirmed |
-| Pneumatic hardware placement | Place the pump, regulator and other heavy pneumatic hardware off-arm wherever practical. Carry only tubing and necessary lightweight tool hardware on the moving arm. | Provisional |
+| J1-J3 | Each joint uses one Rtelligent 42AM08 NEMA 17 stepper, RMCS-1120 drive, external gearbox and Omron incremental encoder. Use 0.71 N.m as the stepper holding torque. | Confirmed |
+| J4-J5 | One Waveshare ST3215 serial bus servo per joint. | Confirmed |
+| G1 | Use the third Waveshare ST3215 for the mechanical gripper. | Confirmed |
+| Power | 24 V for the stepper/drive subsystem; 12 V for ST3215 servos and pneumatic hardware. | Confirmed |
+| Pneumatic placement | Keep the pump and regulator off-arm wherever practical; move only lightweight tubing, valve/control hardware and the soft tool. | Confirmed approach |
 
-## 3. Reach and workspace
+## 3. Geometry and workspace
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| Maximum reach | The tool-centre point (TCP) must reach at least 600 mm from the J1 rotation axis in the primary working direction. | Confirmed requirement |
-| Minimum reach | The arm must work at a TCP distance of 200 mm or less without colliding with its own base. | Confirmed requirement |
-| Base mounting | Use a fixed upright base mounted on a horizontal bench. | Provisional |
-| J1 working sweep | Target at least 300 degrees of total base rotation. Use hard stops and cable management instead of assuming unlimited rotation. | Provisional |
-| Vertical workspace | Define minimum and maximum TCP height relative to the mounting surface. | TBD |
-| Critical task points | Define pickup, placement, handover and home coordinates with required tool orientations. | TBD |
-| Base keep-out zone | Define the volume that links, grippers and payloads must not enter. | TBD |
-| Obstacles and surroundings | Record bench edges, walls, cameras, adjacent arms and other collision objects. | TBD |
+| Shoulder height, H | 180 mm above the bench. | Confirmed |
+| Upper-arm length, L1 | 280 mm from J2 to J3. | Provisional |
+| Forearm length, L2 | 260 mm from J3 to J4. | Provisional |
+| Tool offset, Lt | 100 mm from the J5 wrist centre to the TCP. | Confirmed |
+| Link-length torque sweep | Current baseline remains L1 = 280 mm, L2 = 260 mm. Best redistribution trial is L1 = 250 mm, L2 = 290 mm; it reduces the J2/J3 capacity ratio from 2.76 to 2.42 while keeping required critical poses valid. | Calculation complete; not adopted |
+| Radial requirement | TCP working radius from 200 to 600 mm. The 600 mm boundary uses a horizontal-forward tool at provisional Z = 180 mm. | Confirmed orientation; height provisional |
+| Vertical requirement | TCP height from Z = 0 to 650 mm. The 650 mm boundary is CP3 rather than a requirement for every radius/orientation. | Confirmed boundary |
+| J1 sweep | Commanded range +/-150 degrees. | Confirmed |
+| Base keep-out zone | Reserve a 150 mm radius around J1; determine final height from CAD. | Provisional radius; height TBD |
 
-## 4. Payload and tool loading
-
-| Topic / item | Plan / execution description | Status |
-|---|---|---|
-| Rated object payload | Design for a 750 g manipulated object. This excludes the gripper and modular interface. | Confirmed |
-| Complete torque load | Include object payload, gripper, quick-change interface, wrist hardware, cables and tubing in every joint torque model. | Confirmed approach |
-| End-effector assembly mass | Use 500 g as the preliminary maximum mass of the gripper plus modular interface, excluding the object. | Provisional |
-| Initial tool-end sizing load | Use 1.25 kg total: 0.75 kg object plus 0.50 kg end-effector assembly. | Provisional |
-| Payload protection | Do not reduce the 750 g object-payload requirement to compensate for gripper mass. | Confirmed approach |
-| Tool centre of mass | Measure or establish the maximum centre-of-mass offset for each gripper before final torque calculations. | TBD |
-
-## 5. Preliminary performance targets
+### Required critical poses
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| TCP positioning accuracy | Target +/-5 mm after calibration. | Provisional |
-| TCP repeatability | Target +/-3 mm while carrying the rated object payload. | Provisional |
-| J1-J3 speed | Target at least 30 deg/s at the joint output. | Provisional |
-| J4-J5 speed | Target at least 60 deg/s at the joint output. | Provisional |
-| Mechanical-gripper cycle time | Target 1.5 s or less for a complete open or close movement. | Provisional |
-| Structural safety factor | Use a minimum factor of safety of 2.0 against yield for the worst-case static rated load. | Provisional |
-| Actuator sizing margin | Keep required continuous joint torque at or below 67 percent of available continuous output torque after gearbox efficiency is included. | Provisional |
-| Moving-arm mass | Target 10 kg or less, excluding the fixed base, power supplies and off-arm pneumatic equipment. | Provisional |
+| CP1 | R = 500 mm, Z = 0 mm, vertically downward tool. | Confirmed; kinematic pass |
+| CP2 | R = 200 mm, Z = 0 mm, vertically downward tool. | Confirmed; kinematic pass |
+| CP3 | R = 300 mm, Z = 650 mm, horizontal-forward tool. | Confirmed; kinematic pass |
+| R600 boundary | R = 600 mm, Z = 180 mm provisionally, horizontal-forward tool. | Kinematic pass |
 
-## 6. Modular end-effector and pogo-pin interface
+### Workspace-map conclusions
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| Common interface | Provide a repeatable mechanical attachment, positive retention, electrical connection and strain relief for interchangeable tools. | Confirmed requirement |
-| Pogo-pin connector | Use the approved 4-contact magnetic pogo-pin male/female pair for automatic tool power, communication and identification. It must engage only after the mechanical interface has located and retained the tool. | Confirmed part; approach provisional |
-| Pogo contact 1 | Assign to +12 V tool power for the ST3215 gripper or local soft-gripper electronics. | Provisional |
-| Pogo contact 2 | Assign to common power and signal ground. | Provisional |
-| Pogo contact 3 | Assign to half-duplex serial data for the ST3215 or a local tool controller. | Provisional |
-| Pogo contact 4 | Assign to attachment detection and analogue tool identification using a tool-side resistor. | Provisional |
-| Mechanical load path | Carry tool weight, payload forces, torque and impacts through separate mechanical datums and a positive lock; the pogo pins must carry no structural load. | Confirmed design approach |
-| Tool-change power sequence | Switch tool power off before attachment/removal. After locking, read the tool ID and enable 12 V power only when a valid tool is detected. | Provisional |
-| Mechanical-gripper connection | Connect the ST3215 to +12 V, ground and half-duplex serial data through the tool interface. | Provisional |
-| Soft-gripper connection | Keep the pump and regulator off-arm. Use a lightweight local controller/driver to receive commands and switch the required tool-side valve. | Provisional |
-| Pogo-pin current capacity | Verify continuous and peak current capacity against ST3215 and valve loads. If inadequate, retain pogo contacts for data/detection and add a separately rated power connection. | Validation required |
-| Hot-plugging | Do not connect or disconnect the tool under electrical load unless the connector and power-switching circuit are explicitly validated for hot-plug use. | Confirmed design approach |
-| Mechanical interface geometry | Define locating datums, locking mechanism, tool flange dimensions and allowable moment. | TBD |
-| Pneumatic connection | Select and locate a compact pneumatic quick connector for the soft gripper. | TBD |
-| Tool-ID values | Select resistor values, controller pull-up and valid detection thresholds for each tool type. | TBD |
+| Downward tool map | At Z = 0 mm, joint-limit reach is R = 200-534 mm. CP1 and CP2 pass. Maximum downward-tool height in the analysed R = 200-600 mm domain is Z = 527 mm. | Kinematic map complete |
+| Horizontal tool map | At Z = 0 mm, reach is R = 213-600 mm; at Z = 180 mm, R = 286-600 mm; at Z = 650 mm, R = 200-365 mm. CP3 and R600 pass. | Kinematic map complete |
+| Map images | [Downward map](workspace_map_downward.png) and [horizontal map](workspace_map_horizontal.png). | Visually checked |
+| Detailed map data | Stored under [`analysis_artifacts`](analysis_artifacts/). | Complete |
+| Physical validation | Kinematic maps exclude link thickness, self-collision, base collision, gripper/payload clearance, cables and external obstacles. | CAD validation required |
 
-## 7. Validation required before detailed design
+## 4. Joint definitions and limits
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| Motor and servo data | Obtain mass, dimensions, rated speed/torque curves, current limits and shaft details for every approved actuator. | Validation required |
-| Gearboxes | Confirm ratio, efficiency, backlash, mass and allowable radial/axial output loads for all three external gearboxes. | Validation required |
-| Encoders | Confirm mounting geometry, electrical interface, resolution and compatibility with the selected drives/controller. | Validation required |
-| Gripper mass properties | Establish the mass and centre of mass of the mechanical gripper, soft gripper and modular interface. | Validation required |
-| Workspace coordinates | Define critical Cartesian points and required TCP orientations before selecting link lengths. | Validation required |
-| Electrical interface | Confirm pogo-pin current rating, serial voltage levels, grounding and power-switching protection before freezing the pinout. | Validation required |
+| J1 base yaw | Zero points along +X. Mechanical: -160 to +160 degrees. Commanded: -150 to +150 degrees. | Confirmed |
+| J2 shoulder pitch | Zero is upper arm horizontal-forward; positive raises it. Mechanical: -100 to +120 degrees. Commanded: -90 to +110 degrees. | Confirmed |
+| J3 elbow pitch | Zero is a straight elbow. Bidirectional mechanical range: -145 to +145 degrees. Commanded: -140 to +140 degrees. | Confirmed; packaging validation required |
+| J4 wrist pitch | Zero is tool axis collinear with the forearm. Mechanical: -140 to +140 degrees. Commanded: -130 to +130 degrees. | Confirmed |
+| J5 wrist roll | Zero is nominal upright tool roll. Mechanical: -180 to +180 degrees. Commanded: -160 to +160 degrees. | Confirmed |
+| G1 gripper | Derive physical limits from the gripper linkage; expose normal operation as 5-95 percent. | TBD |
+
+## 5. Loads and performance targets
+
+| Topic / item | Plan / execution description | Status |
+|---|---|---|
+| Object payload | 750 g, excluding the gripper and modular interface. | Confirmed |
+| End-effector mass | Use 500 g provisionally for gripper plus interface. Initial total tool-end sizing load: 1.25 kg. | Provisional |
+| Upper-arm link mass | Use 300 g provisionally for the L1 structural link, excluding the J3 motor/gearbox/encoder assembly. | Provisional |
+| Forearm link mass | Use 280 g provisionally for the L2 structural link, excluding the wrist servo assembly. | Provisional |
+| Cable/tubing allowance | Use 75 g provisionally on the upper arm and 75 g provisionally on the forearm. | Provisional |
+| Rtelligent 42AM08 motor mass | Use 510 g per motor for torque/moving-mass calculations. J1 and J2 motor masses are near the base/shoulder; the J3 motor is included as moving mass on the upper arm. | Source-backed |
+| Omron E6B2 encoder mass | Use 100 g per encoder for torque/moving-mass calculations. | Source-backed approximation |
+| ST3215 servo mass | Use 70 g per servo provisionally. J4 and J5 use two servos in the wrist; G1 uses the third servo in the gripper/tool assembly. | Provisional |
+| RMCS-1120 driver mass | Use 0 g moving-arm contribution because the drivers should be mounted off-arm. | Confirmed approach |
+| Assumed gearbox mass | Use 450 g provisionally for the moving J3 gearbox in the torque model. J1/J2 gearbox masses are not counted as distal moving masses for J2 gravity torque. | Provisional |
+| Brackets/bearings allowance | Use 200 g provisionally for the moving J3 joint brackets and bearings; wrist brackets/bearings are included in the 300 g wrist assembly. | Provisional |
+| J3 moving joint assembly | Use 1.26 kg provisionally for the J3 motor, encoder, assumed gearbox, brackets and bearings. | Provisional |
+| Wrist moving assembly | Use 300 g provisionally for two ST3215 servos plus wrist brackets and bearings. | Provisional |
+| Total distal moving mass | Current torque model uses 3.54 kg carried by J2, including links, cables/tubing, J3 assembly, wrist assembly, tool assembly and payload. | Preliminary |
+| Torque model | Include payload, gripper/interface, wrist hardware, links, actuators, cables and tubing. Do not treat 0.71 N.m holding torque as dynamic torque. | Confirmed approach |
+| Accuracy and repeatability | Target +/-5 mm TCP accuracy and +/-3 mm repeatability after calibration. | Provisional |
+| Joint speed | Target at least 30 deg/s for J1-J3 and 60 deg/s for J4-J5. | Provisional |
+| Safety margins | Structural factor of safety 2.0; required continuous torque no more than 67 percent of available continuous output torque after efficiency. | Provisional |
+| Moving-arm mass | Target 10 kg or less, excluding base, supplies and off-arm pneumatic equipment. | Provisional |
+| Preliminary torque result | Current first-pass minimum output capacities: J1 = 1.45 N.m, J2 = 25.12 N.m, J3 = 9.12 N.m, J4 = 1.64 N.m, J5 = 0.51 N.m. | Preliminary |
+| Gearbox screening | Initial screen: J1 at least 10:1, J2 about 100:1 or higher, J3 about 40:1 or higher. Final choice needs torque-speed curves and gearbox data. | Preliminary |
+| Detailed torque file | Stored under [`analysis_artifacts/Torque_calculations.md`](analysis_artifacts/Torque_calculations.md). | Complete |
+| Link-length sweep file | Stored under [`analysis_artifacts/Link_length_torque_sweep.md`](analysis_artifacts/Link_length_torque_sweep.md). | Complete |
+
+## 6. Modular tool interface
+
+| Topic / item | Plan / execution description | Status |
+|---|---|---|
+| Mechanical interface | Use repeatable datums and a positive lock. The pogo connector carries no structural load. | Confirmed approach |
+| Four pogo contacts | Provisional allocation: +12 V, ground, half-duplex serial data and tool-detect/analogue-ID. | Provisional |
+| Tool-change sequence | Disable power, mechanically attach/lock, detect the tool, then enable power. No hot-plugging under load. | Confirmed approach |
+| Mechanical gripper | Connect the ST3215 through 12 V, ground and serial data. | Provisional |
+| Soft gripper | Keep pump/regulator off-arm; use lightweight tool-side valve/control hardware and a pneumatic quick connector. | Provisional |
+| Electrical capacity | Verify pogo continuous/peak current against servo and valve loads; add separately rated power contacts if required. | Validation required |
+
+## 7. Open items before design freeze
+
+| Topic / item | Plan / execution description | Status |
+|---|---|---|
+| Link optimization | Compare L1/L2 candidates for workspace margin, singularities, mass and torque. | Next calculation |
+| Actuator data | Obtain actuator mass, dimensions, current limits and torque-speed curves. | Validation required |
+| Gearboxes | Confirm ratio, efficiency, backlash, mass and allowable output loads. | Validation required |
+| Tool mass properties | Establish mass and centre of mass for each gripper and the quick-change interface. | Validation required |
+| CAD clearance | Check joint packaging, bidirectional elbow motion, link/base/self-collision, payload clearance and cable routing. | Validation required |
+| Interface details | Finalize flange/datums, lock, allowable tool moment, pogo rating/pinout, tool-ID circuit and pneumatic connection. | TBD/validation required |
+| Environment | Record bench edges, cameras, adjacent arm and other obstacles. | TBD |

@@ -1,0 +1,213 @@
+﻿{
+    "Model_status":  "Preliminary CAD-independent estimate",
+    "Distal_moving_mass_kg":  3.54,
+    "Mass_model_kg":  {
+                          "UpperLink":  0.3,
+                          "UpperCable":  0.075,
+                          "J3Assembly":  1.26,
+                          "ForearmLink":  0.28,
+                          "ForearmCable":  0.075,
+                          "WristAssembly":  0.3,
+                          "ToolAssembly":  0.5,
+                          "Payload":  0.75
+                      },
+    "Full_horizontal_static_torque_Nm":  {
+                                             "J2_Nm":  14.596,
+                                             "J3_Nm":  5.387,
+                                             "J4_Nm":  0.981
+                                         },
+    "Sizing":  [
+                   {
+                       "Joint":  "J1",
+                       "Static_Nm":  0,
+                       "Acceleration_Nm":  0.773,
+                       "Friction_allowance_Nm":  0.2,
+                       "Preliminary_demand_Nm":  0.973,
+                       "Minimum_output_capacity_Nm":  1.452
+                   },
+                   {
+                       "Joint":  "J2",
+                       "Static_Nm":  14.596,
+                       "Acceleration_Nm":  0.773,
+                       "Friction_allowance_Nm":  1.46,
+                       "Preliminary_demand_Nm":  16.829,
+                       "Minimum_output_capacity_Nm":  25.117
+                   },
+                   {
+                       "Joint":  "J3",
+                       "Static_Nm":  5.387,
+                       "Acceleration_Nm":  0.181,
+                       "Friction_allowance_Nm":  0.539,
+                       "Preliminary_demand_Nm":  6.107,
+                       "Minimum_output_capacity_Nm":  9.115
+                   },
+                   {
+                       "Joint":  "J4",
+                       "Static_Nm":  0.981,
+                       "Acceleration_Nm":  0.018,
+                       "Friction_allowance_Nm":  0.098,
+                       "Preliminary_demand_Nm":  1.097,
+                       "Minimum_output_capacity_Nm":  1.638
+                   },
+                   {
+                       "Joint":  "J5",
+                       "Static_Nm":  0.307,
+                       "Acceleration_Nm":  0.002,
+                       "Friction_allowance_Nm":  0.031,
+                       "Preliminary_demand_Nm":  0.339,
+                       "Minimum_output_capacity_Nm":  0.506
+                   }
+               ],
+    "Screening_ratio_assumptions":  {
+                                        "Stepper_holding_torque_Nm":  0.71,
+                                        "Assumed_running_fraction":  0.5,
+                                        "Assumed_gearbox_efficiency":  0.75,
+                                        "Ratios":  [
+                                                       {
+                                                           "Joint":  "J1",
+                                                           "Mathematical_minimum_ratio":  5.5,
+                                                           "Preliminary_screening_ratio":  "at least 10:1"
+                                                       },
+                                                       {
+                                                           "Joint":  "J2",
+                                                           "Mathematical_minimum_ratio":  94.3,
+                                                           "Preliminary_screening_ratio":  "about 100:1 or higher"
+                                                       },
+                                                       {
+                                                           "Joint":  "J3",
+                                                           "Mathematical_minimum_ratio":  34.2,
+                                                           "Preliminary_screening_ratio":  "about 40:1 or higher"
+                                                       }
+                                                   ]
+                                    },
+    "Required_poses":  [
+                           {
+                               "Name":  "CP1",
+                               "R_mm":  500,
+                               "Z_mm":  0,
+                               "Phi_deg":  -90,
+                               "Solutions":  [
+                                                 {
+                                                     "Branch":  "negative-elbow",
+                                                     "Valid":  true,
+                                                     "J2_deg":  10.47,
+                                                     "J3_deg":  -40.69,
+                                                     "J4_deg":  -59.78,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  12.863,
+                                                                            "J3_Nm":  3.807,
+                                                                            "J4_Nm":  0
+                                                                        }
+                                                 },
+                                                 {
+                                                     "Branch":  "positive-elbow",
+                                                     "Valid":  true,
+                                                     "J2_deg":  -28.65,
+                                                     "J3_deg":  40.69,
+                                                     "J4_deg":  -102.04,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  12.39,
+                                                                            "J3_Nm":  4.309,
+                                                                            "J4_Nm":  0
+                                                                        }
+                                                 }
+                                             ]
+                           },
+                           {
+                               "Name":  "CP2",
+                               "R_mm":  200,
+                               "Z_mm":  0,
+                               "Phi_deg":  -90,
+                               "Solutions":  [
+                                                 {
+                                                     "Branch":  "negative-elbow",
+                                                     "Valid":  true,
+                                                     "J2_deg":  39.89,
+                                                     "J3_deg":  -133.16,
+                                                     "J4_deg":  3.27,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  6.814,
+                                                                            "J3_Nm":  0.251,
+                                                                            "J4_Nm":  0
+                                                                        }
+                                                 },
+                                                 {
+                                                     "Branch":  "positive-elbow",
+                                                     "Valid":  false,
+                                                     "J2_deg":  -83.5,
+                                                     "J3_deg":  133.16,
+                                                     "J4_deg":  -139.67,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  3.895,
+                                                                            "J3_Nm":  2.852,
+                                                                            "J4_Nm":  0
+                                                                        }
+                                                 }
+                                             ]
+                           },
+                           {
+                               "Name":  "CP3",
+                               "R_mm":  300,
+                               "Z_mm":  650,
+                               "Phi_deg":  0,
+                               "Solutions":  [
+                                                 {
+                                                     "Branch":  "negative-elbow",
+                                                     "Valid":  true,
+                                                     "J2_deg":  85.17,
+                                                     "J3_deg":  -37.89,
+                                                     "J4_deg":  -47.27,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  4.746,
+                                                                            "J3_Nm":  3.971,
+                                                                            "J4_Nm":  0.981
+                                                                        }
+                                                 },
+                                                 {
+                                                     "Branch":  "positive-elbow",
+                                                     "Valid":  true,
+                                                     "J2_deg":  48.73,
+                                                     "J3_deg":  37.89,
+                                                     "J4_deg":  -86.62,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  7.315,
+                                                                            "J3_Nm":  1.24,
+                                                                            "J4_Nm":  0.981
+                                                                        }
+                                                 }
+                                             ]
+                           },
+                           {
+                               "Name":  "R600",
+                               "R_mm":  600,
+                               "Z_mm":  180,
+                               "Phi_deg":  0,
+                               "Solutions":  [
+                                                 {
+                                                     "Branch":  "negative-elbow",
+                                                     "Valid":  true,
+                                                     "J2_deg":  21.34,
+                                                     "J3_deg":  -44.42,
+                                                     "J4_deg":  23.07,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  13.612,
+                                                                            "J3_Nm":  5.035,
+                                                                            "J4_Nm":  0.981
+                                                                        }
+                                                 },
+                                                 {
+                                                     "Branch":  "positive-elbow",
+                                                     "Valid":  true,
+                                                     "J2_deg":  -21.34,
+                                                     "J3_deg":  44.42,
+                                                     "J4_deg":  -23.07,
+                                                     "Gravity_torque":  {
+                                                                            "J2_Nm":  13.612,
+                                                                            "J3_Nm":  5.035,
+                                                                            "J4_Nm":  0.981
+                                                                        }
+                                                 }
+                                             ]
+                           }
+                       ]
+}
