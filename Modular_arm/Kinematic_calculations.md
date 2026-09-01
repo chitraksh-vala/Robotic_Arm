@@ -18,9 +18,9 @@ numerical evaluations, candidate comparisons and calculation results are recorde
 | R = 600 mm boundary test | Test a horizontal-forward tool at R = 600 mm and provisional Z = 180 mm. | Preliminary planar calculation complete |
 | CP3 maximum-height test | Test R = 300 mm, Z = 650 mm with a horizontal-forward tool. | Preliminary planar calculation complete |
 | Workspace validation | Sample both required tool orientations across the complete R-Z domain and apply commanded joint limits. | Complete at 1 mm resolution; collision validation remains |
-| Link-length iteration | Compare feasible L1/L2 candidates and select a kinematic candidate. | Not started |
-| Static torque | Calculate gravity loads using the selected geometry and mass model. | Not started |
-| Dynamic torque | Add acceleration, inertia, friction and service margins. | Not started |
+| Link-length iteration | Compare feasible L1/L2 candidates and select a kinematic candidate. | Complete - see `analysis_artifacts/Link_length_torque_sweep.md` |
+| Static torque | Calculate gravity loads using the selected geometry and mass model. | Complete - see `analysis_artifacts/Torque_calculations.md` |
+| Dynamic torque | Add acceleration, inertia, friction and service margins. | Complete - see `analysis_artifacts/Torque_calculations.md` |
 
 ## Confirmed calculation inputs
 
@@ -39,6 +39,39 @@ numerical evaluations, candidate comparisons and calculation results are recorde
 | CP2 | R = 200 mm, Z = 0 mm | Confirmed coordinates |
 | Object payload | 0.750 kg, excluding gripper/interface | Confirmed |
 | Initial complete end-effector load | 1.250 kg | Provisional |
+
+## Current selected design instance
+
+This is the current provisional design instance selected after the workspace, torque,
+link-length sweep and gearbox-only J2 sizing pass.
+
+| Topic / item | Selected value | Reason/status |
+|---|---:|---|
+| Shoulder height, H | 180 mm | Confirmed input |
+| Upper-arm length, L1 | 280 mm | Selected provisional baseline for first CAD skeleton |
+| Forearm length, L2 | 260 mm | Selected provisional baseline for first CAD skeleton |
+| Tool offset, Lt | 100 mm | Confirmed input |
+| J1 gearbox ratio | 10:1 | Selected provisional drivetrain |
+| J2 gearbox ratio | 100:1 | Selected provisional gearbox-only shoulder drive |
+| J3 gearbox ratio | 40:1 | Selected provisional drivetrain |
+| J2 counterbalance | Not used | User-directed current version |
+| Link split trial result | L1 = 250 mm, L2 = 290 mm was not adopted | It improved J2 torque only slightly while changing the validated baseline |
+
+The kinematic equations and workspace maps in this file remain based on:
+
+```text
+H = 180 mm
+L1 = 280 mm
+L2 = 260 mm
+Lt = 100 mm
+```
+
+The gearbox choices do not change the geometric reach equations. They affect speed,
+torque margin, backlash and motor rpm, which are documented in:
+
+- `analysis_artifacts/J2_gearbox_sizing_check.md`
+- `analysis_artifacts/Final_design_sizing.md`
+- `Final_outputs.md`
 
 ## Preliminary planar continuity calculation: CP2 to CP1
 

@@ -1,0 +1,216 @@
+﻿{
+    "Model_status":  "Provisional design package, gearbox-only J2",
+    "Final_geometry":  {
+                           "H_mm":  180,
+                           "L1_mm":  280,
+                           "L2_mm":  260,
+                           "Lt_mm":  100,
+                           "Payload_kg":  0.75,
+                           "ToolAssembly_kg":  0.5,
+                           "DistalMovingMassForJ2_kg":  3.54,
+                           "J1_required_Nm":  1.452,
+                           "J2_required_Nm":  25.117,
+                           "J3_required_Nm":  9.115,
+                           "J4_required_Nm":  1.638,
+                           "J5_required_Nm":  0.506
+                       },
+    "Selected_gearboxes":  {
+                               "J1_ratio":  10,
+                               "J2_ratio":  100,
+                               "J3_ratio":  40,
+                               "Efficiency":  0.75
+                           },
+    "Stepper_drivetrain_check":  [
+                                     {
+                                         "Joint":  "J1",
+                                         "Selected_ratio":  "10:1",
+                                         "Required_output_Nm":  1.452,
+                                         "Target_joint_speed_deg_s":  30,
+                                         "Joint_speed_rpm":  5,
+                                         "Motor_speed_rpm":  50,
+                                         "Required_motor_torque_Nm":  0.194,
+                                         "Curve_available_motor_torque_Nm":  0.78,
+                                         "Curve_available_output_torque_Nm":  5.85,
+                                         "Torque_margin":  4.03,
+                                         "Ideal_microstep_output_deg":  0.0225,
+                                         "Ideal_TCP_step_at_full_reach_mm":  0.2513,
+                                         "Screen":  "Pass for concept"
+                                     },
+                                     {
+                                         "Joint":  "J2",
+                                         "Selected_ratio":  "100:1",
+                                         "Required_output_Nm":  25.117,
+                                         "Target_joint_speed_deg_s":  30,
+                                         "Joint_speed_rpm":  5,
+                                         "Motor_speed_rpm":  500,
+                                         "Required_motor_torque_Nm":  0.335,
+                                         "Curve_available_motor_torque_Nm":  0.53,
+                                         "Curve_available_output_torque_Nm":  39.75,
+                                         "Torque_margin":  1.58,
+                                         "Ideal_microstep_output_deg":  0.00225,
+                                         "Ideal_TCP_step_at_full_reach_mm":  0.0251,
+                                         "Screen":  "Pass for concept"
+                                     },
+                                     {
+                                         "Joint":  "J3",
+                                         "Selected_ratio":  "40:1",
+                                         "Required_output_Nm":  9.115,
+                                         "Target_joint_speed_deg_s":  30,
+                                         "Joint_speed_rpm":  5,
+                                         "Motor_speed_rpm":  200,
+                                         "Required_motor_torque_Nm":  0.304,
+                                         "Curve_available_motor_torque_Nm":  0.7,
+                                         "Curve_available_output_torque_Nm":  21,
+                                         "Torque_margin":  2.3,
+                                         "Ideal_microstep_output_deg":  0.00562,
+                                         "Ideal_TCP_step_at_full_reach_mm":  0.0628,
+                                         "Screen":  "Pass for concept"
+                                     }
+                                 ],
+    "Servo_check":  [
+                        {
+                            "Joint":  "J4",
+                            "Required_output_Nm":  1.638,
+                            "Target_speed_deg_s":  60,
+                            "ST3215_stall_Nm":  2.942,
+                            "Assumed_usable_fraction":  0.3,
+                            "Assumed_usable_Nm":  0.883,
+                            "Margin":  0.54,
+                            "Screen":  "Fails under this assumption"
+                        },
+                        {
+                            "Joint":  "J4",
+                            "Required_output_Nm":  1.638,
+                            "Target_speed_deg_s":  60,
+                            "ST3215_stall_Nm":  2.942,
+                            "Assumed_usable_fraction":  0.5,
+                            "Assumed_usable_Nm":  1.471,
+                            "Margin":  0.9,
+                            "Screen":  "Fails under this assumption"
+                        },
+                        {
+                            "Joint":  "J4",
+                            "Required_output_Nm":  1.638,
+                            "Target_speed_deg_s":  60,
+                            "ST3215_stall_Nm":  2.942,
+                            "Assumed_usable_fraction":  0.67,
+                            "Assumed_usable_Nm":  1.971,
+                            "Margin":  1.2,
+                            "Screen":  "Pass under this assumption"
+                        },
+                        {
+                            "Joint":  "J5",
+                            "Required_output_Nm":  0.506,
+                            "Target_speed_deg_s":  60,
+                            "ST3215_stall_Nm":  2.942,
+                            "Assumed_usable_fraction":  0.3,
+                            "Assumed_usable_Nm":  0.883,
+                            "Margin":  1.74,
+                            "Screen":  "Pass under this assumption"
+                        },
+                        {
+                            "Joint":  "J5",
+                            "Required_output_Nm":  0.506,
+                            "Target_speed_deg_s":  60,
+                            "ST3215_stall_Nm":  2.942,
+                            "Assumed_usable_fraction":  0.5,
+                            "Assumed_usable_Nm":  1.471,
+                            "Margin":  2.91,
+                            "Screen":  "Pass under this assumption"
+                        },
+                        {
+                            "Joint":  "J5",
+                            "Required_output_Nm":  0.506,
+                            "Target_speed_deg_s":  60,
+                            "ST3215_stall_Nm":  2.942,
+                            "Assumed_usable_fraction":  0.67,
+                            "Assumed_usable_Nm":  1.971,
+                            "Margin":  3.9,
+                            "Screen":  "Pass under this assumption"
+                        }
+                    ],
+    "Link_structural_check":  [
+                                  {
+                                      "Link":  "L1 upper arm",
+                                      "Selected_section":  "40x30x2.5 mm rectangular tube, tall side vertical",
+                                      "Length_mm":  280,
+                                      "Area_mm2":  325,
+                                      "Tube_only_mass_kg":  0.246,
+                                      "Design_mass_with_attachments_kg":  0.3,
+                                      "I_bending_mm4":  70677,
+                                      "Tip_force_used_N":  31,
+                                      "End_deflection_mm":  0.047,
+                                      "Bending_stress_MPa":  2.46,
+                                      "Screen":  "Pass for concept; joint brackets need CAD/FEA"
+                                  },
+                                  {
+                                      "Link":  "L2 forearm",
+                                      "Selected_section":  "35x25x2 mm rectangular tube, tall side vertical",
+                                      "Length_mm":  260,
+                                      "Area_mm2":  224,
+                                      "Tube_only_mass_kg":  0.157,
+                                      "Design_mass_with_attachments_kg":  0.28,
+                                      "I_bending_mm4":  37189,
+                                      "Tip_force_used_N":  15.2,
+                                      "End_deflection_mm":  0.035,
+                                      "Bending_stress_MPa":  1.86,
+                                      "Screen":  "Pass for concept; joint brackets need CAD/FEA"
+                                  }
+                              ],
+    "Accuracy_and_backlash_targets":  [
+                                          {
+                                              "Topic":  "TCP accuracy target",
+                                              "Value":  "+/-5 mm",
+                                              "Calculation":  "At 640 mm reach this corresponds to about +/-0.447 deg total angular error.",
+                                              "Decision":  "Keep gearbox backlash preferably \u003c=0.15 deg output per loaded joint, absolute maximum \u003c=0.30 deg."
+                                          },
+                                          {
+                                              "Topic":  "TCP repeatability target",
+                                              "Value":  "+/-3 mm",
+                                              "Calculation":  "At 640 mm reach this corresponds to about +/-0.269 deg repeatable angular error.",
+                                              "Decision":  "Backlash, encoder calibration and joint compliance dominate over microstep resolution."
+                                          }
+                                      ],
+    "Gripper_sizing":  [
+                           {
+                               "Item":  "Mechanical gripper actuator",
+                               "Value":  "1x ST3215, third Waveshare servo",
+                               "Calculation":  "30 kg.cm = 2.942 N.m locked-rotor torque at 12 V.",
+                               "Decision":  "Use conservatively; design linkage so normal holding does not require continuous stall."
+                           },
+                           {
+                               "Item":  "Conservative pinch estimate",
+                               "Value":  "about 21 N at 25 mm effective finger radius",
+                               "Calculation":  "0.30 * 2.942 N.m usable torque * 0.60 linkage efficiency / 0.025 m = 21.2 N.",
+                               "Decision":  "Adequate for light objects if finger pads have high friction; validate with real objects."
+                           },
+                           {
+                               "Item":  "Short-duration stall-limited pinch estimate",
+                               "Value":  "about 71 N at 25 mm effective finger radius",
+                               "Calculation":  "2.942 N.m * 0.60 / 0.025 m = 70.6 N.",
+                               "Decision":  "Do not use as continuous design force."
+                           }
+                       ],
+    "Modular_interface":  [
+                              {
+                                  "Item":  "Mechanical quick-change",
+                                  "Decision":  "Use two locating dowels plus one positive latch/screw/wedge. Pogo pins carry no structure.",
+                                  "Status":  "Final concept"
+                              },
+                              {
+                                  "Item":  "Electrical contacts",
+                                  "Decision":  "Minimum 4 contacts: +12 V, GND, half-duplex serial, tool-ID. Prefer 6 contacts with duplicated +12 V and GND for current margin.",
+                                  "Status":  "4-pin compatible, 6-pin preferred"
+                              },
+                              {
+                                  "Item":  "Tool loads",
+                                  "Decision":  "Design interface for 1.25 kg vertical load and at least 0.75 N.m tool moment before safety factor.",
+                                  "Status":  "Preliminary"
+                              },
+                              {
+                                  "Item":  "Soft gripper routing",
+                                  "Decision":  "Keep pump/regulator off-arm; route only lightweight tube and compact valve/control hardware to tool side.",
+                                  "Status":  "Final concept"
+                              }
+                          ]
+}

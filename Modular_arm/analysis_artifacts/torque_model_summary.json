@@ -59,24 +59,24 @@
                    }
                ],
     "Screening_ratio_assumptions":  {
-                                        "Stepper_holding_torque_Nm":  0.71,
+                                        "Stepper_holding_torque_Nm":  0.8,
                                         "Assumed_running_fraction":  0.5,
                                         "Assumed_gearbox_efficiency":  0.75,
                                         "Ratios":  [
                                                        {
                                                            "Joint":  "J1",
-                                                           "Mathematical_minimum_ratio":  5.5,
+                                                           "Mathematical_minimum_ratio":  4.8,
                                                            "Preliminary_screening_ratio":  "at least 10:1"
                                                        },
                                                        {
                                                            "Joint":  "J2",
-                                                           "Mathematical_minimum_ratio":  94.3,
-                                                           "Preliminary_screening_ratio":  "about 100:1 or higher"
+                                                           "Mathematical_minimum_ratio":  83.7,
+                                                           "Preliminary_screening_ratio":  "about 90:1 or higher before torque-speed validation"
                                                        },
                                                        {
                                                            "Joint":  "J3",
-                                                           "Mathematical_minimum_ratio":  34.2,
-                                                           "Preliminary_screening_ratio":  "about 40:1 or higher"
+                                                           "Mathematical_minimum_ratio":  30.4,
+                                                           "Preliminary_screening_ratio":  "about 35:1 or higher before torque-speed validation"
                                                        }
                                                    ]
                                     },

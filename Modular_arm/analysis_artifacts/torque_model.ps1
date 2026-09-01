@@ -195,7 +195,7 @@ $sizing = foreach ($row in $jointRows) {
     }
 }
 
-$motorRunningTorqueAssumption = 0.50 * 0.71
+$motorRunningTorqueAssumption = 0.50 * 0.80
 $gearboxEfficiencyAssumption = 0.75
 $screeningRatios = foreach ($jointName in @('J1', 'J2', 'J3')) {
     $capacity = ($sizing | Where-Object Joint -eq $jointName).Minimum_output_capacity_Nm
@@ -207,8 +207,8 @@ $screeningRatios = foreach ($jointName in @('J1', 'J2', 'J3')) {
         )
         Preliminary_screening_ratio = switch ($jointName) {
             'J1' { 'at least 10:1' }
-            'J2' { 'about 100:1 or higher' }
-            'J3' { 'about 40:1 or higher' }
+            'J2' { 'about 90:1 or higher before torque-speed validation' }
+            'J3' { 'about 35:1 or higher before torque-speed validation' }
         }
     }
 }
@@ -220,7 +220,7 @@ $summary = [pscustomobject]@{
     Full_horizontal_static_torque_Nm = $straightStatic
     Sizing = $sizing
     Screening_ratio_assumptions = [pscustomobject]@{
-        Stepper_holding_torque_Nm = 0.71
+        Stepper_holding_torque_Nm = 0.80
         Assumed_running_fraction = 0.50
         Assumed_gearbox_efficiency = $gearboxEfficiencyAssumption
         Ratios = $screeningRatios

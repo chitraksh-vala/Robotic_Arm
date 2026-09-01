@@ -18,7 +18,7 @@ Status: preliminary CAD-independent estimate. These values are for early actuato
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
 | Rtelligent 42AM08 mass | Use 0.51 kg per motor for moving-mass estimation. | Source-backed |
-| Rtelligent 42AM08 torque | Use 0.71 N.m holding torque because the project linked values were declared the truth for the stepper. | Project constraint |
+| Rtelligent 42AM08 torque | Use 0.80 N.m holding torque from the checked website/datasheet value. | Confirmed |
 | ST3215 servo | Use 30 kg.cm locked-rotor torque at 12 V as a comparison value, not as guaranteed continuous torque. | Source-backed, continuous TBD |
 | ST3215 mass | Use 70 g per servo where exact approved-BOM mass is not yet locked. | Provisional |
 | Omron E6B2 encoder | Use about 100 g per encoder. | Source-backed approximation |
@@ -89,13 +89,13 @@ This full-horizontal case is slightly worse for J2 and J3 than the required crit
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| J1 gearbox | Mathematical ratio is about 5.5:1 with the current assumptions; screen at least 10:1 for margin and stiffness. | Provisional |
-| J2 gearbox | Mathematical ratio is about 94.3:1; screen about 100:1 or higher. | Provisional, critical |
-| J3 gearbox | Mathematical ratio is about 34.2:1; screen about 40:1 or higher. | Provisional |
+| J1 gearbox | Mathematical ratio is about 4.8:1 with the current assumptions; screen at least 10:1 for margin and stiffness. | Provisional |
+| J2 gearbox | Mathematical ratio is about 83.7:1; screen about 90:1 or higher before torque-speed validation. | Provisional, critical |
+| J3 gearbox | Mathematical ratio is about 30.4:1; screen about 35:1 or higher before torque-speed validation. | Provisional |
 | J4 ST3215 | Required output capacity is 1.638 N.m. ST3215 locked-rotor torque is about 2.94 N.m at 12 V, so stall comparison passes, but continuous thermal capacity is still unknown. | Validation required |
 | J5 ST3215 | Required output capacity is 0.506 N.m with 25 mm eccentricity assumption; likely acceptable, but depends on actual tool centre of mass. | Validation required |
 
-Stepper ratio screening assumes 0.71 N.m holding torque, only 50 percent usable running torque and 75 percent gearbox efficiency. This is intentionally conservative for a first pass, but final selection needs the actual torque-speed curve, gearbox efficiency and required joint speed.
+Stepper ratio screening assumes 0.80 N.m holding torque, only 50 percent usable running torque and 75 percent gearbox efficiency. This is intentionally conservative for a first pass, but final selection needs the actual torque-speed curve, gearbox efficiency and required joint speed.
 
 ## 9. Main conclusion
 

@@ -17,7 +17,7 @@ Status: **Confirmed** = selected requirement; **Provisional** = current design t
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| J1-J3 | Each joint uses one Rtelligent 42AM08 NEMA 17 stepper, RMCS-1120 drive, external gearbox and Omron incremental encoder. Use 0.71 N.m as the stepper holding torque. | Confirmed |
+| J1-J3 | Each joint uses one Rtelligent 42AM08 NEMA 17 stepper, RMCS-1120 drive, external gearbox and Omron incremental encoder. Use 0.80 N.m as the stepper holding torque. | Confirmed |
 | J4-J5 | One Waveshare ST3215 serial bus servo per joint. | Confirmed |
 | G1 | Use the third Waveshare ST3215 for the mechanical gripper. | Confirmed |
 | Power | 24 V for the stepper/drive subsystem; 12 V for ST3215 servos and pneumatic hardware. | Confirmed |
@@ -32,6 +32,8 @@ Status: **Confirmed** = selected requirement; **Provisional** = current design t
 | Forearm length, L2 | 260 mm from J3 to J4. | Provisional |
 | Tool offset, Lt | 100 mm from the J5 wrist centre to the TCP. | Confirmed |
 | Link-length torque sweep | Current baseline remains L1 = 280 mm, L2 = 260 mm. Best redistribution trial is L1 = 250 mm, L2 = 290 mm; it reduces the J2/J3 capacity ratio from 2.76 to 2.42 while keeping required critical poses valid. | Calculation complete; not adopted |
+| J2 torque reduction direction | Link split alone reduces J2 capacity only about 2.5 percent. A 5-8 N.m shoulder counterbalance is the strongest current option, reducing J2 target from 25.12 N.m to about 16.91-11.98 N.m in the preliminary model. | Recommended |
+| Final geometry for CAD pass | Use H = 180 mm, L1 = 280 mm, L2 = 260 mm, Lt = 100 mm for the first CAD skeleton. | Selected provisional |
 | Radial requirement | TCP working radius from 200 to 600 mm. The 600 mm boundary uses a horizontal-forward tool at provisional Z = 180 mm. | Confirmed orientation; height provisional |
 | Vertical requirement | TCP height from Z = 0 to 650 mm. The 650 mm boundary is CP3 rather than a requirement for every radius/orientation. | Confirmed boundary |
 | J1 sweep | Commanded range +/-150 degrees. | Confirmed |
@@ -85,15 +87,25 @@ Status: **Confirmed** = selected requirement; **Provisional** = current design t
 | J3 moving joint assembly | Use 1.26 kg provisionally for the J3 motor, encoder, assumed gearbox, brackets and bearings. | Provisional |
 | Wrist moving assembly | Use 300 g provisionally for two ST3215 servos plus wrist brackets and bearings. | Provisional |
 | Total distal moving mass | Current torque model uses 3.54 kg carried by J2, including links, cables/tubing, J3 assembly, wrist assembly, tool assembly and payload. | Preliminary |
-| Torque model | Include payload, gripper/interface, wrist hardware, links, actuators, cables and tubing. Do not treat 0.71 N.m holding torque as dynamic torque. | Confirmed approach |
+| Torque model | Include payload, gripper/interface, wrist hardware, links, actuators, cables and tubing. Do not treat 0.80 N.m holding torque as dynamic torque. | Confirmed approach |
 | Accuracy and repeatability | Target +/-5 mm TCP accuracy and +/-3 mm repeatability after calibration. | Provisional |
 | Joint speed | Target at least 30 deg/s for J1-J3 and 60 deg/s for J4-J5. | Provisional |
 | Safety margins | Structural factor of safety 2.0; required continuous torque no more than 67 percent of available continuous output torque after efficiency. | Provisional |
 | Moving-arm mass | Target 10 kg or less, excluding base, supplies and off-arm pneumatic equipment. | Provisional |
 | Preliminary torque result | Current first-pass minimum output capacities: J1 = 1.45 N.m, J2 = 25.12 N.m, J3 = 9.12 N.m, J4 = 1.64 N.m, J5 = 0.51 N.m. | Preliminary |
-| Gearbox screening | Initial screen: J1 at least 10:1, J2 about 100:1 or higher, J3 about 40:1 or higher. Final choice needs torque-speed curves and gearbox data. | Preliminary |
+| Gearbox screening | Initial screen: J1 at least 10:1, J2 about 90:1 or higher from math-only sizing, J3 about 35:1 or higher. Final choice needs torque-speed curves and gearbox data. | Preliminary |
+| J2 gearbox sizing check | Without counterbalance, J2 should be screened around 100:1 to 120:1. With 5-8 N.m counterbalance, J2 can move toward roughly 50:1 to 80:1 depending on final torque-speed data. | Preliminary; validation required |
+| Selected gearbox-only drivetrain | For the current no-counterbalance design pass use J1 = 10:1, J2 = 100:1, J3 = 40:1. | Selected provisional |
+| Selected link tube concepts | Use L1 = 40 x 30 x 2.5 mm 6061-T6 rectangular tube and L2 = 35 x 25 x 2.0 mm 6061-T6 rectangular tube, both with tall side vertical. | Selected provisional |
+| Gearbox backlash target | Prefer loaded output backlash <=0.15 degrees for J2/J3; absolute maximum target <=0.30 degrees. | Provisional |
 | Detailed torque file | Stored under [`analysis_artifacts/Torque_calculations.md`](analysis_artifacts/Torque_calculations.md). | Complete |
 | Link-length sweep file | Stored under [`analysis_artifacts/Link_length_torque_sweep.md`](analysis_artifacts/Link_length_torque_sweep.md). | Complete |
+| J2 reduction study file | Stored under [`analysis_artifacts/J2_torque_reduction_study.md`](analysis_artifacts/J2_torque_reduction_study.md). | Complete |
+| J2 gearbox sizing file | Stored under [`analysis_artifacts/J2_gearbox_sizing_check.md`](analysis_artifacts/J2_gearbox_sizing_check.md). | Complete |
+| Final design sizing file | Stored under [`analysis_artifacts/Final_design_sizing.md`](analysis_artifacts/Final_design_sizing.md). | Complete |
+| Folder README | Stored in [`README.md`](README.md). | Complete |
+| Design log | Stored in [`Design_log.md`](Design_log.md). | Complete |
+| Final outputs | Stored in [`Final_outputs.md`](Final_outputs.md). | Complete |
 
 ## 6. Modular tool interface
 
@@ -110,9 +122,9 @@ Status: **Confirmed** = selected requirement; **Provisional** = current design t
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| Link optimization | Compare L1/L2 candidates for workspace margin, singularities, mass and torque. | Next calculation |
-| Actuator data | Obtain actuator mass, dimensions, current limits and torque-speed curves. | Validation required |
-| Gearboxes | Confirm ratio, efficiency, backlash, mass and allowable output loads. | Validation required |
+| Link optimization | Compare L1/L2 candidates for workspace margin, singularities, mass and torque. | Complete for provisional pass |
+| Actuator data | Obtain actuator mass, dimensions, current limits and torque-speed curves. | Partially complete; final validation required |
+| Gearboxes | Confirm ratio, efficiency, backlash, mass and allowable output loads. | Ratio selected provisionally; hardware validation required |
 | Tool mass properties | Establish mass and centre of mass for each gripper and the quick-change interface. | Validation required |
 | CAD clearance | Check joint packaging, bidirectional elbow motion, link/base/self-collision, payload clearance and cable routing. | Validation required |
 | Interface details | Finalize flange/datums, lock, allowable tool moment, pogo rating/pinout, tool-ID circuit and pneumatic connection. | TBD/validation required |
