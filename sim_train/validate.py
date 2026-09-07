@@ -46,20 +46,20 @@ print("[2] Checking Python Dependencies")
 print("-" * 60)
 
 required_modules = {
-    'mujoco': 'MuJoCo physics engine',
-    'numpy': 'Numerical computing',
-    'pygame': 'Joystick/input support',
-    'h5py': 'HDF5 file format',
-    'yaml': 'Configuration files',
+    'mujoco': ('MuJoCo physics engine', 'mujoco'),
+    'numpy': ('Numerical computing', 'numpy'),
+    'PIL': ('PNG image rendering via Pillow', 'pillow'),
+    'h5py': ('HDF5 file format', 'h5py'),
+    'yaml': ('Configuration files', 'pyyaml'),
 }
 
-for module_name, description in required_modules.items():
+for module_name, (description, package_name) in required_modules.items():
     try:
         __import__(module_name)
         check(f"{module_name}", True)
     except ImportError as e:
         check(f"{module_name}", False, 
-              f"Install with: pip install {module_name}")
+              f"Install with: pip install {package_name}")
 
 # Project structure
 print()
@@ -92,29 +92,6 @@ for file_name, description in required_files.items():
     check(f"{file_name}", file_path.exists(), 
           f"Missing: {description}")
 
-# Joystick detection
-print()
-print("[4] Checking Joystick/Controller")
-print("-" * 60)
-
-try:
-    import pygame
-    pygame.init()
-    pygame.joystick.init()
-    
-    joy_count = pygame.joystick.get_count()
-    connected = joy_count > 0
-    
-    check(f"Joystick/Controller", connected, 
-          "Connect DualSense controller via USB or Bluetooth")
-    
-    if connected:
-        for i in range(joy_count):
-            joy = pygame.joystick.Joystick(i)
-            print(f"         Found: {joy.get_name()}")
-except Exception as e:
-    check("Joystick detection", False, str(e))
-
 # Summary
 print()
 print("=" * 60)
@@ -136,5 +113,4 @@ else:
     print("Common fixes:")
     print("  1. Install dependencies: pip install -r requirements.txt")
     print("  2. Create missing directories: mkdir mujoco_model recordings config")
-    print("  3. Connect DualSense controller and wait 5 seconds")
     sys.exit(1)

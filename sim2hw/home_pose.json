@@ -1,0 +1,19 @@
+{
+  "pose": {
+    "shoulder_pan": -0.023782508488713938,
+    "shoulder_lift": -1.8128408889945495,
+    "elbow_flex": 1.7031344788691918,
+    "wrist_flex": -1.7790850704944394,
+    "wrist_roll": 1.4722139932207114,
+    "gripper": -1.1062702335717904
+  },
+  "joint_order": [
+    "shoulder_pan",
+    "shoulder_lift",
+    "elbow_flex",
+    "wrist_flex",
+    "wrist_roll",
+    "gripper"
+  ],
+  "saved_at": "2026-09-07T19:25:58+0530"
+}

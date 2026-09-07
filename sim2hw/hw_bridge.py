@@ -16,6 +16,7 @@ HTTP Endpoints:
   POST /move               { joints: {name: rad, ...} }
   POST /gripper            { value: 0..1 }
   POST /home
+  POST /stop
   POST /set_motion_time    { time_ms: 0..10000 }  - Time to reach position (higher = slower, default: 1500ms)
   POST /set_speed          { speed: 0..1000 }     - Legacy, converts to time_ms
   POST /set_acceleration   { acceleration: 0..254 } - For Feetech fallback only
@@ -33,8 +34,102 @@ import argparse, json, math, time, threading, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+BASE_DIR = Path(__file__).parent
+HOME_POSE_FILE = BASE_DIR / "home_pose.json"
+GRIPPER_POSITIONS_FILE = BASE_DIR / "gripper_positions.json"
 JOINT_NAMES = ["shoulder_pan","shoulder_lift","elbow_flex","wrist_flex","wrist_roll","gripper"]
 PORT = 7843
+# Close slightly past the MuJoCo model's nominal lower limit so the real gripper
+# clamps fully; tune this back toward -0.17453 if the servo strains.
+GRIPPER_CLOSED_ANGLE = -0.55
+GRIPPER_FULL_OPEN_ANGLE = 1.7453
+GRIPPER_OPEN_FRACTION = 0.35
+DEFAULT_GRIPPER_POSITIONS = {
+    "open": GRIPPER_CLOSED_ANGLE + GRIPPER_OPEN_FRACTION * (GRIPPER_FULL_OPEN_ANGLE - GRIPPER_CLOSED_ANGLE),
+    "close": GRIPPER_CLOSED_ANGLE,
+}
+
+# Folded rest pose used by /home. Angles are radians.
+# Gripper matches the sim convention: closed is the physical closed limit.
+HOME_POSE = {
+    "shoulder_pan": 0.0,
+    "shoulder_lift": 1.45,
+    "elbow_flex": -1.45,
+    "wrist_flex": -1.20,
+    "wrist_roll": 0.0,
+    "gripper": GRIPPER_CLOSED_ANGLE,
+}
+
+def gripper_value_to_angle(value):
+    """Map UI/API gripper value where 0=part-open and 1=fully closed to joint angle."""
+    positions = load_gripper_positions()
+    value = max(0.0, min(1.0, float(value)))
+    return positions["open"] + value * (positions["close"] - positions["open"])
+
+def _validated_gripper_positions(positions):
+    validated = {}
+    for name in ("open", "close"):
+        if name not in positions:
+            raise ValueError(f"Missing gripper position: {name}")
+        value = float(positions[name])
+        if not math.isfinite(value):
+            raise ValueError(f"Invalid gripper position for {name}")
+        validated[name] = value
+    return validated
+
+def load_gripper_positions():
+    try:
+        with open(GRIPPER_POSITIONS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return _validated_gripper_positions(data.get("positions", data))
+    except FileNotFoundError:
+        return DEFAULT_GRIPPER_POSITIONS.copy()
+    except Exception as e:
+        print(f"  Could not load gripper positions: {e}")
+        return DEFAULT_GRIPPER_POSITIONS.copy()
+
+def save_gripper_positions(positions):
+    positions = _validated_gripper_positions(positions)
+    payload = {
+        "positions": positions,
+        "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+    with open(GRIPPER_POSITIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return positions
+
+def _validated_home_pose(pose):
+    validated = {}
+    for name in JOINT_NAMES:
+        if name not in pose:
+            raise ValueError(f"Missing home pose joint: {name}")
+        value = float(pose[name])
+        if not math.isfinite(value):
+            raise ValueError(f"Invalid home pose value for {name}")
+        validated[name] = value
+    return validated
+
+def load_home_pose():
+    try:
+        with open(HOME_POSE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return _validated_home_pose(data.get("pose", data))
+    except FileNotFoundError:
+        return HOME_POSE.copy()
+    except Exception as e:
+        print(f"  Could not load custom home pose: {e}")
+        return HOME_POSE.copy()
+
+def save_home_pose(pose):
+    pose = _validated_home_pose(pose)
+    payload = {
+        "pose": pose,
+        "joint_order": JOINT_NAMES,
+        "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+    with open(HOME_POSE_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return pose
 
 # ── Try to import lerobot / feetech driver ──────────────────────────────────
 HAS_LEROBOT = False
@@ -189,6 +284,33 @@ class HWArm:
                 return result
         return {n: 0.0 for n in JOINT_NAMES}
 
+    def set_gripper_torque(self, enabled: bool):
+        """Enable or disable only the gripper motor torque for manual positioning."""
+        if not self.connected or self.bus is None:
+            return
+        with self._lock:
+            try:
+                if HAS_LEROBOT and hasattr(self.bus, "enable_torque") and hasattr(self.bus, "disable_torque"):
+                    if enabled:
+                        self.bus.enable_torque("gripper")
+                    else:
+                        self.bus.disable_torque("gripper")
+                elif HAS_FEETECH:
+                    motor_id = self.MOTOR_IDS[JOINT_NAMES.index("gripper")]
+                    self.bus.EnableTorque(motor_id, 1 if enabled else 0)
+            except Exception as e:
+                print(f"  Error setting gripper torque: {e}")
+
+    def stop(self):
+        """Hold the current measured position as the new target."""
+        if not self.connected:
+            return
+        current = self.read_joints()
+        old_goal_time = self.goal_time_ms
+        self.goal_time_ms = 0
+        self.send_joints(current)
+        self.goal_time_ms = old_goal_time
+
     def disconnect(self):
         if self.bus is not None:
             try:
@@ -231,6 +353,10 @@ class HWHandler(BaseHTTPRequestHandler):
                 "speed_legacy": arm.move_speed,
                 "acceleration_legacy": arm.move_acceleration
             })
+        elif self.path == "/home_pose":
+            self.send_json({"pose": load_home_pose(), "file": str(HOME_POSE_FILE)})
+        elif self.path == "/gripper_positions":
+            self.send_json({"positions": load_gripper_positions(), "file": str(GRIPPER_POSITIONS_FILE)})
         else:
             self.send_json({"error":"not found"},404)
 
@@ -243,11 +369,42 @@ class HWHandler(BaseHTTPRequestHandler):
             self.send_json({"ok":True})
         elif self.path == "/gripper":
             val = body.get("value", 0)
-            arm.send_joints({"gripper": val * 1.7453})
+            arm.send_joints({"gripper": gripper_value_to_angle(val)})
             self.send_json({"ok":True})
         elif self.path == "/home":
-            arm.send_joints({n:0.0 for n in JOINT_NAMES})
+            pose = body.get("pose") if isinstance(body.get("pose"), dict) else load_home_pose()
+            arm.send_joints(_validated_home_pose(pose))
             self.send_json({"ok":True})
+        elif self.path == "/stop":
+            arm.stop()
+            self.send_json({"ok": True})
+        elif self.path == "/gripper_torque":
+            enabled = bool(body.get("enabled", True))
+            arm.set_gripper_torque(enabled)
+            self.send_json({"ok": True, "enabled": enabled})
+        elif self.path == "/home_pose":
+            try:
+                saved = save_home_pose(body.get("pose", {}))
+            except (TypeError, ValueError, OSError) as e:
+                self.send_json({"ok": False, "error": str(e)}, 400)
+                return
+            self.send_json({"ok": True, "pose": saved, "file": str(HOME_POSE_FILE)})
+        elif self.path == "/gripper_positions":
+            try:
+                name = str(body["name"]).strip().lower()
+                if name not in ("open", "close"):
+                    raise ValueError("Gripper position name must be open or close")
+                if "value" in body:
+                    value = float(body["value"])
+                else:
+                    value = arm.read_joints()["gripper"]
+                positions = load_gripper_positions()
+                positions[name] = value
+                saved = save_gripper_positions(positions)
+            except (KeyError, TypeError, ValueError, OSError) as e:
+                self.send_json({"ok": False, "error": str(e)}, 400)
+                return
+            self.send_json({"ok": True, "positions": saved, "file": str(GRIPPER_POSITIONS_FILE)})
         elif self.path == "/set_motion_time":
             # Set motion time in milliseconds (higher = slower, smoother)
             time_ms = body.get("time_ms", 1500)

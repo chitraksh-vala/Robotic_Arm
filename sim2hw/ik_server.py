@@ -13,11 +13,15 @@ HTTP endpoints (port 7842):
   GET  /state         → EE pos, joint angles, IK stats, pipeline log
   GET  /render        → base64 PNG from offscreen renderer (always works)
   POST /ik            { x, y, z, wrist_angle? }
+  POST /coordinate_action { x, y, z, pre_gripper?, post_gripper?, approach_z?, wrist_angle?, orientation?, retreat? }
+  POST /coordinate_preview { x, y, z, pre_gripper?, post_gripper?, approach_z?, wrist_angle?, orientation? }
+  POST /radius_limits  { z, wrist_angle?, orientation?, max_err_mm? }
   POST /move          { joints: [6 floats] }
   POST /gripper       { value: 0..1 }
   POST /pipeline      { steps: [...] }
   POST /setcam        { az, el, dist }
   POST /home
+  POST /stop
   GET  /viewer_status → whether viewer window is open
 
 Pipeline step format:
@@ -32,7 +36,7 @@ Pipeline step format:
 """
 
 import os, sys, math, json, time, threading, base64, io, argparse, urllib.request
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import numpy as np
 
 # ── GL backend: use EGL for offscreen; viewer manages its own context ────────
@@ -41,11 +45,163 @@ import mujoco
 import mujoco.viewer
 from PIL import Image
 
-SCENE      = os.path.join(os.path.dirname(__file__), "scene_full.xml")
+BASE_DIR   = os.path.dirname(__file__)
+SCENE      = os.path.join(BASE_DIR, "scene_full.xml")
+COORD_UI   = os.path.join(BASE_DIR, "coordinate_control.html")
+HOME_POSE_FILE = os.path.join(BASE_DIR, "home_pose.json")
+GRIPPER_POSITIONS_FILE = os.path.join(BASE_DIR, "gripper_positions.json")
 ARM_JOINTS = ["shoulder_pan","shoulder_lift","elbow_flex","wrist_flex","wrist_roll"]
 ALL_ACTS   = ["shoulder_pan","shoulder_lift","elbow_flex","wrist_flex","wrist_roll","gripper"]
 EE_SITE    = "gripperframe"
 PORT       = 7842
+MIN_TARGET_RADIUS = 0.12
+X_RANGE = (-0.5, 0.6)
+Y_RANGE = (-0.5, 0.5)
+Z_RANGE = (-0.05, 0.65)
+WRIST_ROLL_RANGE = (-2.74385, 2.84121)
+# Close slightly past the MuJoCo model's nominal lower limit so the real gripper
+# clamps fully; the sim joint itself will still respect its physical joint range.
+GRIPPER_CLOSED_ANGLE = -0.55
+GRIPPER_FULL_OPEN_ANGLE = 1.7453
+GRIPPER_OPEN_FRACTION = 0.35
+DEFAULT_GRIPPER_POSITIONS = {
+    "open": GRIPPER_CLOSED_ANGLE + GRIPPER_OPEN_FRACTION * (GRIPPER_FULL_OPEN_ANGLE - GRIPPER_CLOSED_ANGLE),
+    "close": GRIPPER_CLOSED_ANGLE,
+}
+IK_SEEDS = [
+    [0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.6, -1.0, 0.3, 0.0],
+    [0.0, -0.6, 1.0, -0.3, 0.0],
+    [0.0, 1.0, -1.3, -0.2, 0.0],
+    [0.0, -0.2, -1.2, 1.0, 0.0],
+]
+
+# Folded rest pose used by /home. Angles are radians and kept within scene ctrlrange.
+# Gripper uses raw actuator angle here: closed is the physical closed limit.
+HOME_POSE = {
+    "shoulder_pan": 0.0,
+    "shoulder_lift": 1.45,
+    "elbow_flex": -1.45,
+    "wrist_flex": -1.20,
+    "wrist_roll": 0.0,
+    "gripper": GRIPPER_CLOSED_ANGLE,
+}
+
+def gripper_value_to_angle(value):
+    """Map UI/API gripper value where 0=part-open and 1=fully closed."""
+    positions = load_gripper_positions()
+    value = max(0.0, min(1.0, float(value)))
+    return positions["open"] + value * (positions["close"] - positions["open"])
+
+def _validated_gripper_positions(positions):
+    validated = {}
+    for name in ("open", "close"):
+        if name not in positions:
+            raise ValueError(f"Missing gripper position: {name}")
+        value = float(positions[name])
+        if not math.isfinite(value):
+            raise ValueError(f"Invalid gripper position for {name}")
+        validated[name] = value
+    return validated
+
+def load_gripper_positions():
+    try:
+        with open(GRIPPER_POSITIONS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return _validated_gripper_positions(data.get("positions", data))
+    except FileNotFoundError:
+        return DEFAULT_GRIPPER_POSITIONS.copy()
+    except Exception as e:
+        print(f"  Could not load gripper positions: {e}")
+        return DEFAULT_GRIPPER_POSITIONS.copy()
+
+def save_gripper_positions(positions):
+    positions = _validated_gripper_positions(positions)
+    payload = {
+        "positions": positions,
+        "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+    with open(GRIPPER_POSITIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return positions
+
+def _validated_home_pose(pose):
+    validated = {}
+    for name in ALL_ACTS:
+        if name not in pose:
+            raise ValueError(f"Missing home pose joint: {name}")
+        value = float(pose[name])
+        if not math.isfinite(value):
+            raise ValueError(f"Invalid home pose value for {name}")
+        validated[name] = value
+    return validated
+
+def parse_gripper_value(value, field_name="gripper"):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        grip = value.strip().lower()
+        if grip in ("close", "closed", "grip", "1", "true"):
+            return 1.0
+        if grip in ("open", "opened", "release", "0", "false"):
+            return 0.0
+        if grip in ("hold", "none", ""):
+            return None
+        raise ValueError(f"{field_name} must be open, close, hold, or a 0..1 value")
+    grip_value = float(value)
+    if not (0.0 <= grip_value <= 1.0):
+        raise ValueError(f"{field_name} value must be between 0 and 1")
+    return grip_value
+
+def parse_orientation(value):
+    if value is None:
+        return "free"
+    orientation = str(value).strip().lower()
+    aliases = {
+        "none": "free",
+        "natural": "free",
+        "free": "free",
+        "down": "downwards",
+        "downward": "downwards",
+        "downwards": "downwards",
+        "horizontal": "horizontal",
+        "sideways": "horizontal",
+    }
+    if orientation not in aliases:
+        raise ValueError("orientation must be free, downwards, or horizontal")
+    return aliases[orientation]
+
+def orientation_axis_for(mode, x, y):
+    if mode == "downwards":
+        return np.array([0.0, 0.0, -1.0])
+    if mode == "horizontal":
+        radius = math.hypot(x, y)
+        if radius < 1e-6:
+            return np.array([1.0, 0.0, 0.0])
+        return np.array([x / radius, y / radius, 0.0])
+    return None
+
+def load_home_pose():
+    try:
+        with open(HOME_POSE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return _validated_home_pose(data.get("pose", data))
+    except FileNotFoundError:
+        return HOME_POSE.copy()
+    except Exception as e:
+        print(f"  Could not load custom home pose: {e}")
+        return HOME_POSE.copy()
+
+def save_home_pose(pose):
+    pose = _validated_home_pose(pose)
+    payload = {
+        "pose": pose,
+        "joint_order": ALL_ACTS,
+        "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+    with open(HOME_POSE_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return pose
 
 # ── Optional hardware bridge mirror ──────────────────────────────────────────
 HW_BRIDGE_URL = "http://127.0.0.1:7843"
@@ -86,24 +242,54 @@ class DLSIK:
         hi = np.array([self.m.joint(ji).range[1] for ji in self.jnt_ids])
         return np.clip(q, lo, hi)
 
-    def _jacobian(self):
+    def _jacobian(self, active_indices=None):
         Jp = np.zeros((3, self.m.nv)); Jr = np.zeros((3, self.m.nv))
         mujoco.mj_jacSite(self.m, self.d, Jp, Jr, self.ee_id)
-        return Jp[:, self.dof_ids]
+        dof_ids = self.dof_ids if active_indices is None else [self.dof_ids[i] for i in active_indices]
+        return Jp[:, dof_ids], Jr[:, dof_ids]
 
-    def solve(self, target):
+    def solve(self, target, locked=None, target_axis=None, axis_index=0, orientation_weight=0.08):
         q = self._get_q().copy()
+        locked = locked or {}
+        active_indices = [i for i in range(len(self.jnt_ids)) if i not in locked]
+        target_axis = None if target_axis is None else np.asarray(target_axis, dtype=float)
+        if target_axis is not None:
+            norm = float(np.linalg.norm(target_axis))
+            if norm > 1e-9:
+                target_axis = target_axis / norm
+            else:
+                target_axis = None
+        for idx, value in locked.items():
+            q[idx] = value
         for it in range(self.max_iter):
+            for idx, value in locked.items():
+                q[idx] = value
             self._set_q(q)
             mujoco.mj_kinematics(self.m, self.d)
-            err = np.array(target) - self.d.site_xpos[self.ee_id]
-            en  = float(np.linalg.norm(err))
-            if en < self.tol:
+            pos_err = np.array(target) - self.d.site_xpos[self.ee_id]
+            solve_err = pos_err
+            Jp, Jr = self._jacobian(active_indices)
+            J = Jp
+            axis_err_norm = 0.0
+            if target_axis is not None:
+                site_xmat = self.d.site_xmat[self.ee_id].reshape(3, 3)
+                current_axis = site_xmat[:, axis_index]
+                axis_err = np.cross(current_axis, target_axis)
+                axis_err_norm = float(np.linalg.norm(axis_err))
+                solve_err = np.concatenate([pos_err, orientation_weight * axis_err])
+                J = np.vstack([Jp, orientation_weight * Jr])
+            en = float(np.linalg.norm(pos_err))
+            if en < self.tol and axis_err_norm < 0.03:
                 break
-            J   = self._jacobian()
             JJt = J @ J.T
             lam = self.lam if float(np.linalg.det(JJt)) > 1e-8 else self.lam * 20
-            q   = self._clip(q + self.alpha * J.T @ np.linalg.solve(JJt + lam**2 * np.eye(3), err))
+            dq_active = self.alpha * J.T @ np.linalg.solve(JJt + lam**2 * np.eye(JJt.shape[0]), solve_err)
+            q_next = q.copy()
+            for local_idx, q_idx in enumerate(active_indices):
+                q_next[q_idx] += dq_active[local_idx]
+            q = self._clip(q_next)
+            for idx, value in locked.items():
+                q[idx] = value
         self._set_q(q)
         mujoco.mj_kinematics(self.m, self.d)
         final_err = float(np.linalg.norm(np.array(target) - self.d.site_xpos[self.ee_id]))
@@ -142,9 +328,13 @@ class SimState:
 
         # pipeline
         self.pipeline_running = False
+        self.pipeline_stop_requested = False
         self.pipeline_log     = []
         self.last_ik_err      = 0.0
         self.last_ik_iters    = 0
+        self.home_pose        = load_home_pose()
+        self.gripper_positions = load_gripper_positions()
+        self.radius_limit_cache = {}
 
         # trajectory interpolation for smooth motion
         self.interpolating    = False
@@ -260,8 +450,8 @@ class SimState:
                     elapsed = self.d.time - self.interp_start_time
                     t = min(elapsed / self.interp_duration, 1.0)  # clamp to [0, 1]
                     
-                    # Smooth interpolation using cubic easing
-                    t_smooth = t * t * (3.0 - 2.0 * t)  # smoothstep function
+                    # Quintic smootherstep: zero velocity and acceleration at both ends.
+                    t_smooth = t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
                     
                     # Interpolate between start and target control values
                     for i, name in enumerate(ARM_JOINTS):
@@ -286,7 +476,51 @@ class SimState:
             time.sleep(dt * 0.5)          # run ~2× real-time
 
     # ── IK ───────────────────────────────────────────────────────────────────
-    def solve_ik(self, x, y, z, smooth=True, duration=2.0, wrist_angle=None):
+    def _solve_best_ik(self, x, y, z, wrist_angle=None, orientation="free"):
+        """Try IK from the current pose and several neutral seeds, then keep the lowest-error solution."""
+        with self.lock:
+            qpos_snapshot = self.d.qpos.copy()
+            qvel_snapshot = self.d.qvel.copy()
+            current_q = [float(self.d.ctrl[self.act_ids[name]]) for name in ARM_JOINTS]
+
+        target = np.array([x, y, z], dtype=float)
+        target_axis = orientation_axis_for(orientation, x, y)
+        base_yaw = math.atan2(y, x) if abs(x) > 1e-9 or abs(y) > 1e-9 else 0.0
+        seeds = [current_q]
+        for seed in IK_SEEDS:
+            seeded = seed.copy()
+            seeded[0] = base_yaw
+            seeds.append(seeded)
+
+        best = None
+        best_score = None
+        scratch = mujoco.MjData(self.m)
+        local_ik = DLSIK(self.m, scratch, EE_SITE, ARM_JOINTS)
+        for seed in seeds:
+            scratch.qpos[:] = qpos_snapshot
+            scratch.qvel[:] = qvel_snapshot
+            if wrist_angle is not None:
+                seed[4] = wrist_angle
+            for k, ji in enumerate(local_ik.jnt_ids):
+                scratch.qpos[self.m.joint(ji).qposadr[0]] = seed[k]
+            mujoco.mj_forward(self.m, scratch)
+
+            locked = {4: wrist_angle} if wrist_angle is not None else None
+            q, err, iters = local_ik.solve(target, locked=locked, target_axis=target_axis)
+
+            axis_err = 0.0
+            if target_axis is not None:
+                site_xmat = scratch.site_xmat[local_ik.ee_id].reshape(3, 3)
+                current_axis = site_xmat[:, 0]
+                axis_err = float(np.linalg.norm(np.cross(current_axis, target_axis)))
+            score = err + 0.08 * axis_err
+            if best is None or score < best_score:
+                best = (q, err, iters)
+                best_score = score
+
+        return best
+
+    def solve_ik(self, x, y, z, smooth=True, duration=2.0, wrist_angle=None, orientation="free"):
         """
         Solve IK for target position (x, y, z).
         
@@ -298,43 +532,22 @@ class SimState:
                         Use π/2 (~1.57) for horizontal gripper fingers (parallel to floor)
                         If None, wrist_roll is determined naturally by IK (usually 0)
         """
-        # Get current CONTROL values (not positions - that's the key!)
-        # This ensures we start interpolating from where we commanded, not where we are
         with self.lock:
             current_q = [float(self.d.ctrl[self.act_ids[name]]) for name in ARM_JOINTS]
-            # Copy ALL qpos and qvel to scratch data for IK solving
-            self.d_scratch.qpos[:] = self.d.qpos[:]
-            self.d_scratch.qvel[:] = self.d.qvel[:]
             # Update target marker (visual only, on live data)
             self.d.qpos[self.tgt_ids[0]] = x
             self.d.qpos[self.tgt_ids[1]] = y
             self.d.qpos[self.tgt_ids[2]] = z
-        
-        # Initialize scratch data with full forward pass before solving
-        mujoco.mj_forward(self.m, self.d_scratch)
-        
-        # Solve IK on scratch data (outside lock - doesn't touch live sim)
-        q, err, iters = self.ik.solve([x, y, z])
-        
-        # Apply wrist angle constraint if specified
-        if wrist_angle is not None:
-            # wrist_roll is the 5th joint (index 4) in ARM_JOINTS
-            # ARM_JOINTS = ["shoulder_pan","shoulder_lift","elbow_flex","wrist_flex","wrist_roll"]
-            # wrist_roll controls the rotation of the gripper around its axis
-            q[4] = wrist_angle
-            
-            # After modifying wrist angle, recompute error
-            # Set the modified q to scratch data
-            for k, ji in enumerate(self.ik.jnt_ids):
-                self.d_scratch.qpos[self.m.joint(ji).qposadr[0]] = q[k]
-            mujoco.mj_kinematics(self.m, self.d_scratch)
-            err = float(np.linalg.norm(np.array([x, y, z]) - self.d_scratch.site_xpos[self.ik.ee_id]))
+
+        orientation = parse_orientation(orientation)
+        q, err, iters = self._solve_best_ik(x, y, z, wrist_angle=wrist_angle, orientation=orientation)
         
         self.last_ik_err   = err
         self.last_ik_iters = iters
         
         print(f"  IK: current_ctrl={[f'{v:.3f}' for v in current_q]}, target={[f'{v:.3f}' for v in q]}" + 
-              (f", wrist_angle={wrist_angle:.3f}" if wrist_angle is not None else ""))
+              (f", wrist_angle={wrist_angle:.3f}" if wrist_angle is not None else "") +
+              (f", orientation={orientation}" if orientation != "free" else ""))
         
         # Now set up interpolation or instant move (brief lock)
         with self.lock:
@@ -355,6 +568,200 @@ class SimState:
         # Viewer sync thread handles updates automatically
         return q, err, iters
 
+    def preview_ik(self, x, y, z, wrist_angle=None, orientation="free"):
+        """Solve IK against scratch data without moving the live simulation."""
+        orientation = parse_orientation(orientation)
+        return self._solve_best_ik(x, y, z, wrist_angle=wrist_angle, orientation=orientation)
+
+    def build_coordinate_action(self, command):
+        """Expand a Cartesian target and gripper state into a safe mini-pipeline."""
+        if self.pipeline_running:
+            raise ValueError("A pipeline is already running")
+
+        x = float(command["x"])
+        y = float(command["y"])
+        z = float(command["z"])
+        duration = float(command.get("duration", 1.5))
+        settle_time = float(command.get("settle_time", 0.6))
+        gripper_settle = float(command.get("gripper_settle", 0.8))
+        max_err_mm = float(command.get("max_err_mm", 15.0))
+        orientation = parse_orientation(command.get("orientation", command.get("gripper_orientation", "free")))
+        wrist_angle = command.get("wrist_angle", None)
+        if wrist_angle is not None:
+            wrist_angle = float(wrist_angle)
+            if not (WRIST_ROLL_RANGE[0] <= wrist_angle <= WRIST_ROLL_RANGE[1]):
+                raise ValueError(
+                    f"wrist_angle must be between {WRIST_ROLL_RANGE[0]:.2f} and "
+                    f"{WRIST_ROLL_RANGE[1]:.2f} radians"
+                )
+
+        values = [x, y, z, duration, settle_time, gripper_settle, max_err_mm]
+        if wrist_angle is not None:
+            values.append(wrist_angle)
+        if not all(math.isfinite(v) for v in values):
+            raise ValueError("All numeric fields must be finite")
+        if not (X_RANGE[0] <= x <= X_RANGE[1] and Y_RANGE[0] <= y <= Y_RANGE[1] and Z_RANGE[0] <= z <= Z_RANGE[1]):
+            raise ValueError("Target is outside the configured XYZ bounds")
+        radius = math.hypot(x, y)
+        if radius < MIN_TARGET_RADIUS:
+            raise ValueError(
+                f"Target is too close to the base: radial distance {radius:.3f}m is below "
+                f"{MIN_TARGET_RADIUS:.3f}m. Increase X or Y."
+            )
+        if not (0.2 <= duration <= 10.0 and 0.0 <= settle_time <= 5.0 and 0.0 <= gripper_settle <= 5.0):
+            raise ValueError("Timing values are outside the allowed range")
+        if not (1.0 <= max_err_mm <= 100.0):
+            raise ValueError("max_err_mm must be between 1 and 100")
+
+        requested_approach_z = command.get("approach_z", None)
+        if requested_approach_z is None:
+            approach_z = min(max(z + 0.08, 0.12), Z_RANGE[1])
+        else:
+            approach_z = float(requested_approach_z)
+            if not math.isfinite(approach_z):
+                raise ValueError("approach_z must be finite")
+        approach_z = max(approach_z, z)
+        if not (Z_RANGE[0] <= approach_z <= Z_RANGE[1]):
+            raise ValueError("Approach height is outside the configured Z bounds")
+
+        pre_grip_value = parse_gripper_value(command.get("pre_gripper", "hold"), "pre_gripper")
+        post_gripper = command.get("post_gripper", command.get("gripper", command.get("gripper_action", "hold")))
+        post_grip_value = parse_gripper_value(command.get("gripper_value", post_gripper), "post_gripper")
+
+        preflight = []
+        failed_checks = []
+        for label, px, py, pz in (
+            ("Approach target", x, y, approach_z),
+            ("Move to coordinate", x, y, z),
+        ):
+            _, err, iters = self.preview_ik(px, py, pz, wrist_angle=wrist_angle, orientation=orientation)
+            err_mm = err * 1000.0
+            preflight.append({"label": label, "err_mm": round(err_mm, 2), "iters": iters})
+            if err_mm > max_err_mm:
+                failed_checks.append(f"{label} IK error {err_mm:.1f}mm exceeds {max_err_mm:.1f}mm")
+
+        if failed_checks:
+            error = "; ".join(failed_checks)
+            limits = self.radius_limits_for_z(z, wrist_angle=wrist_angle, orientation=orientation, max_err_mm=max_err_mm)
+            if limits["min_radius"] is None:
+                hint = (
+                    f"No radius solved at Z={z:.3f}m with the current wrist angle. "
+                    "Try increasing Z or setting wrist roll to 0."
+                )
+            elif radius < limits["min_radius"]:
+                hint = (
+                    f"At Z={z:.3f}m, usable radius is about "
+                    f"{limits['min_radius']:.3f}m to {limits['max_radius']:.3f}m. Move farther from the base."
+                )
+            elif radius > limits["max_radius"]:
+                hint = (
+                    f"At Z={z:.3f}m, usable radius is about "
+                    f"{limits['min_radius']:.3f}m to {limits['max_radius']:.3f}m. Reduce X/Y reach."
+                )
+            else:
+                hint = "Try increasing Z, lowering max speed/duration changes, or setting wrist roll to 0."
+            raise ValueError(f"{error}. {hint}")
+
+        steps = []
+        if pre_grip_value is not None:
+            steps.append({
+                "type": "gripper",
+                "label": "Open gripper before move" if pre_grip_value < 0.5 else "Close gripper before move",
+                "value": pre_grip_value,
+                "settle_time": gripper_settle,
+            })
+        steps.extend([
+            {
+                "type": "move_ik",
+                "label": "Approach target",
+                "x": x,
+                "y": y,
+                "z": approach_z,
+                "orientation": orientation,
+                "duration": duration,
+                "settle_time": settle_time,
+            },
+            {
+                "type": "move_ik",
+                "label": "Move to coordinate",
+                "x": x,
+                "y": y,
+                "z": z,
+                "orientation": orientation,
+                "duration": duration,
+                "settle_time": settle_time,
+            },
+        ])
+        if wrist_angle is not None:
+            for step in steps:
+                if step["type"] == "move_ik":
+                    step["wrist_angle"] = wrist_angle
+        if post_grip_value is not None:
+            steps.append({
+                "type": "gripper",
+                "label": "Close gripper after reaching target" if post_grip_value >= 0.5 else "Open gripper after reaching target",
+                "value": post_grip_value,
+                "settle_time": gripper_settle,
+            })
+        if command.get("retreat", True):
+            retreat = {
+                "type": "move_ik",
+                "label": "Retreat above target",
+                "x": x,
+                "y": y,
+                "z": approach_z,
+                "orientation": orientation,
+                "duration": duration,
+                "settle_time": settle_time,
+            }
+            if wrist_angle is not None:
+                retreat["wrist_angle"] = wrist_angle
+            steps.append(retreat)
+
+        return steps, preflight
+
+    def radius_limits_for_z(self, z, wrist_angle=None, orientation="free", max_err_mm=15.0):
+        z = float(z)
+        max_err_mm = float(max_err_mm)
+        orientation = parse_orientation(orientation)
+        if wrist_angle is not None:
+            wrist_angle = float(wrist_angle)
+            if not (WRIST_ROLL_RANGE[0] <= wrist_angle <= WRIST_ROLL_RANGE[1]):
+                raise ValueError(
+                    f"wrist_angle must be between {WRIST_ROLL_RANGE[0]:.2f} and "
+                    f"{WRIST_ROLL_RANGE[1]:.2f} radians"
+                )
+        values = [z, max_err_mm]
+        if wrist_angle is not None:
+            values.append(wrist_angle)
+        if not all(math.isfinite(v) for v in values):
+            raise ValueError("All numeric fields must be finite")
+        if not (Z_RANGE[0] <= z <= Z_RANGE[1]):
+            raise ValueError("Z is outside the configured bounds")
+        if not (1.0 <= max_err_mm <= 100.0):
+            raise ValueError("max_err_mm must be between 1 and 100")
+
+        cache_key = (round(z, 3), None if wrist_angle is None else round(wrist_angle, 2), orientation, round(max_err_mm, 1))
+        if cache_key in self.radius_limit_cache:
+            return self.radius_limit_cache[cache_key].copy()
+
+        reachable = []
+        for radius in np.linspace(MIN_TARGET_RADIUS, 0.6, 25):
+            _, err, _ = self.preview_ik(float(radius), 0.0, z, wrist_angle=wrist_angle, orientation=orientation)
+            if err * 1000.0 <= max_err_mm:
+                reachable.append(float(radius))
+
+        if not reachable:
+            result = {"z": z, "min_radius": None, "max_radius": None}
+        else:
+            result = {
+                "z": z,
+                "min_radius": round(min(reachable), 3),
+                "max_radius": round(max(reachable), 3),
+            }
+        self.radius_limit_cache[cache_key] = result
+        return result.copy()
+
     # ── direct control ────────────────────────────────────────────────────────
     def set_joints(self, joints):
         with self.lock:
@@ -367,79 +774,155 @@ class SimState:
 
     def set_gripper(self, value):
         with self.lock:
-            # Gripper range: -0.174 to 1.745 rad
-            # We want: value 0 = fully OPEN (1.745 rad)
-            #         value 1 = fully CLOSED (-0.174 rad for tight grip)
-            # Map [0, 1] to [1.745, -0.174]
-            gripper_angle = 1.7453 - value * (1.7453 + 0.17453)
+            value = max(0.0, min(1.0, float(value)))
+            gripper_angle = self.gripper_positions["open"] + value * (
+                self.gripper_positions["close"] - self.gripper_positions["open"]
+            )
             self.d.ctrl[self.act_ids["gripper"]] = gripper_angle
             # Physics loop will handle forward kinematics naturally
 
-    def home(self):
+    def home(self, duration=3.0):
         with self.lock:
-            for i, name in enumerate(ALL_ACTS):
-                self.d.ctrl[self.act_ids[name]] = 0.0
-            # Update last commanded for arm joints
-            for i in range(len(ARM_JOINTS)):
-                self.last_commanded[i] = 0.0
+            self.interpolating = False
+            current_q = [float(self.d.ctrl[self.act_ids[name]]) for name in ARM_JOINTS]
+            target_q = [self.home_pose[name] for name in ARM_JOINTS]
+            self.interp_start = current_q
+            self.interp_target = target_q
+            self.interp_duration = max(0.2, float(duration))
+            self.interp_start_time = self.d.time
+            self.interpolating = True
+            self.d.ctrl[self.act_ids["gripper"]] = self.home_pose["gripper"]
             # Physics loop will handle forward kinematics naturally
 
-    # ── pipeline ──────────────────────────────────────────────────────────────
-    def run_pipeline(self, steps):
-        def _exec():
-            self.pipeline_running = True
-            self.pipeline_log     = []
-            for i, step in enumerate(steps):
-                stype = step.get("type", "move_ik")
-                label = step.get("label", f"Step {i+1}")
-                self.pipeline_log.append(f"▶ {label}")
-                if stype == "move_ik":
-                    x, y, z = step["x"], step["y"], step["z"]
-                    # Get motion duration (default 2s) and settle time
-                    duration = step.get("duration", 2.0)
-                    settle_time = step.get("settle_time", 0.5)
-                    # Get optional wrist angle for gripper orientation control
-                    wrist_angle = step.get("wrist_angle", None)
-                    
-                    # Start the motion
-                    q, err, iters = self.solve_ik(x, y, z, smooth=True, duration=duration, wrist_angle=wrist_angle)
-                                        # Mirror solved joints to hardware bridge
-                    mirror_hw("/move", {
-                        "joints": {
-                            "shoulder_pan": q[0],
-                            "shoulder_lift": q[1],
-                            "elbow_flex": q[2],
-                            "wrist_flex": q[3],
-                            "wrist_roll": q[4]
-                        }
-                    })
-                    
-                    # Wait for interpolation to complete
-                    time.sleep(duration)
-                    
-                    # Wait for actuators to settle at target
-                    time.sleep(settle_time)
-                    
-                    self.pipeline_log.append(f"  ✓ err={err*1000:.1f}mm iters={iters} ({duration}s motion + {settle_time}s settle)")
-                elif stype == "gripper":
-                    self.set_gripper(step.get("value", 0))
-                    mirror_hw("/gripper", {
-                        "value": step.get("value", 0)
-                    })
-                    time.sleep(step.get("settle_time", 0.8))
-                    # Now inverted: value 0 = OPEN, value 1 = CLOSE
-                    self.pipeline_log.append(f"  ✓ Gripper={'OPEN' if step.get('value',0)<0.5 else 'CLOSE'}")
-                elif stype == "home":
-                    self.home()
-                    mirror_hw("/home", {})
-                    time.sleep(1.5)
-                    self.pipeline_log.append("  ✓ Home pose")
-                elif stype == "wait":
-                    t = step.get("duration", 1.0)
-                    time.sleep(t)
-                    self.pipeline_log.append(f"  ✓ Waited {t}s")
+    def stop(self):
+        with self.lock:
+            mujoco.mj_forward(self.m, self.d)
+            self.interpolating = False
+            for i, name in enumerate(ARM_JOINTS):
+                current = float(self.d.qpos[self.m.joint(self.jnt_ids[name]).qposadr[0]])
+                self.d.ctrl[self.act_ids[name]] = current
+                self.last_commanded[i] = current
+            self.pipeline_stop_requested = True
             self.pipeline_running = False
-            self.pipeline_log.append("✅ Pipeline complete")
+            self.pipeline_log.append("STOP requested")
+
+    def current_pose(self):
+        with self.lock:
+            mujoco.mj_forward(self.m, self.d)
+            return {
+                name: float(self.d.qpos[self.m.joint(self.jnt_ids[name]).qposadr[0]])
+                for name in ALL_ACTS
+            }
+
+    def set_home_pose(self, pose=None):
+        if pose is None:
+            pose = self.current_pose()
+        self.home_pose = save_home_pose(pose)
+        return self.home_pose.copy()
+
+    def current_gripper_position(self):
+        with self.lock:
+            mujoco.mj_forward(self.m, self.d)
+            return float(self.d.qpos[self.m.joint(self.jnt_ids["gripper"]).qposadr[0]])
+
+    def set_gripper_position(self, name, value=None):
+        name = str(name).strip().lower()
+        if name not in ("open", "close"):
+            raise ValueError("Gripper position name must be open or close")
+        if value is None:
+            value = self.current_gripper_position()
+        value = float(value)
+        if not math.isfinite(value):
+            raise ValueError("Gripper position value must be finite")
+        positions = self.gripper_positions.copy()
+        positions[name] = value
+        self.gripper_positions = save_gripper_positions(positions)
+        return self.gripper_positions.copy()
+
+    # ── pipeline ──────────────────────────────────────────────────────────────
+    def _sleep_interruptible(self, duration, interval=0.05):
+        end_time = time.time() + max(0.0, float(duration))
+        while time.time() < end_time:
+            if self.pipeline_stop_requested:
+                raise RuntimeError("Stopped by kill switch")
+            time.sleep(min(interval, end_time - time.time()))
+
+    def run_pipeline(self, steps):
+        if self.pipeline_running:
+            raise ValueError("A pipeline is already running")
+        self.pipeline_running = True
+        self.pipeline_stop_requested = False
+        self.pipeline_log     = []
+
+        def _exec():
+            try:
+                for i, step in enumerate(steps):
+                    if self.pipeline_stop_requested:
+                        raise RuntimeError("Stopped by kill switch")
+                    stype = step.get("type", "move_ik")
+                    label = step.get("label", f"Step {i+1}")
+                    self.pipeline_log.append(f"▶ {label}")
+                    if stype == "move_ik":
+                        x, y, z = step["x"], step["y"], step["z"]
+                        # Get motion duration (default 2s) and settle time
+                        duration = step.get("duration", 2.0)
+                        settle_time = step.get("settle_time", 0.5)
+                        # Get optional wrist angle for gripper orientation control
+                        wrist_angle = step.get("wrist_angle", None)
+                        orientation = step.get("orientation", "free")
+                        
+                        # Start the motion
+                        q, err, iters = self.solve_ik(
+                            x, y, z,
+                            smooth=True,
+                            duration=duration,
+                            wrist_angle=wrist_angle,
+                            orientation=orientation,
+                        )
+                                            # Mirror solved joints to hardware bridge
+                        mirror_hw("/set_motion_time", {"time_ms": int(duration * 1000)})
+                        mirror_hw("/move", {
+                            "joints": {
+                                "shoulder_pan": q[0],
+                                "shoulder_lift": q[1],
+                                "elbow_flex": q[2],
+                                "wrist_flex": q[3],
+                                "wrist_roll": q[4]
+                            }
+                        })
+                        
+                        # Wait for interpolation to complete
+                        self._sleep_interruptible(duration)
+                        
+                        # Wait for actuators to settle at target
+                        self._sleep_interruptible(settle_time)
+                        
+                        self.pipeline_log.append(f"  ✓ err={err*1000:.1f}mm iters={iters} ({duration}s motion + {settle_time}s settle)")
+                    elif stype == "gripper":
+                        mirror_hw("/set_motion_time", {"time_ms": int(step.get("settle_time", 0.8) * 1000)})
+                        self.set_gripper(step.get("value", 0))
+                        mirror_hw("/gripper", {
+                            "value": step.get("value", 0)
+                        })
+                        self._sleep_interruptible(step.get("settle_time", 0.8))
+                        # Now inverted: value 0 = OPEN, value 1 = CLOSE
+                        self.pipeline_log.append(f"  ✓ Gripper={'OPEN' if step.get('value',0)<0.5 else 'CLOSE'}")
+                    elif stype == "home":
+                        duration = step.get("duration", 3.0)
+                        self.home(duration=duration)
+                        mirror_hw("/set_motion_time", {"time_ms": int(duration * 1000)})
+                        mirror_hw("/home", {"pose": self.home_pose})
+                        self._sleep_interruptible(duration)
+                        self.pipeline_log.append("  ✓ Home pose")
+                    elif stype == "wait":
+                        t = step.get("duration", 1.0)
+                        self._sleep_interruptible(t)
+                        self.pipeline_log.append(f"  ✓ Waited {t}s")
+                self.pipeline_log.append("✅ Pipeline complete")
+            except Exception as e:
+                self.pipeline_log.append(f"✗ Pipeline failed: {e}")
+            finally:
+                self.pipeline_running = False
         threading.Thread(target=_exec, daemon=True).start()
 
     # ── state / render ────────────────────────────────────────────────────────
@@ -521,12 +1004,28 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200); self._cors(); self.end_headers()
 
     def do_GET(self):
-        if self.path == "/state":
+        if self.path in ("/", "/coordinate_control.html"):
+            try:
+                with open(COORD_UI, "rb") as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self._cors()
+                self.end_headers()
+                self.wfile.write(body)
+            except OSError as e:
+                self.send_json({"error": f"coordinate UI not found: {e}"}, 404)
+        elif self.path == "/state":
             self.send_json(SIM.get_state())
         elif self.path == "/render":
             self.send_json({"png": SIM.render_png()})
         elif self.path == "/viewer_status":
             self.send_json({"open": SIM.viewer_is_open()})
+        elif self.path == "/home_pose":
+            self.send_json({"pose": SIM.home_pose, "file": HOME_POSE_FILE})
+        elif self.path == "/gripper_positions":
+            self.send_json({"positions": SIM.gripper_positions, "file": GRIPPER_POSITIONS_FILE})
         else:
             self.send_json({"error": "not found"}, 404)
 
@@ -540,7 +1039,14 @@ class Handler(BaseHTTPRequestHandler):
             smooth = body.get("smooth", True)
             duration = body.get("duration", 2.0)
             wrist_angle = body.get("wrist_angle", None)
-            q, err, iters = SIM.solve_ik(x, y, z, smooth=smooth, duration=duration, wrist_angle=wrist_angle)
+            orientation = body.get("orientation", body.get("gripper_orientation", "free"))
+            q, err, iters = SIM.solve_ik(
+                x, y, z,
+                smooth=smooth,
+                duration=duration,
+                wrist_angle=wrist_angle,
+                orientation=orientation,
+            )
             state = SIM.get_state()
             png   = SIM.render_png()
             self.send_json({"joints": dict(zip(ARM_JOINTS, q)),
@@ -556,12 +1062,95 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
 
         elif p == "/pipeline":
-            SIM.run_pipeline(body["steps"])
+            try:
+                SIM.run_pipeline(body["steps"])
+            except ValueError as e:
+                self.send_json({"ok": False, "error": str(e)}, 409)
+                return
             self.send_json({"ok": True, "msg": "Pipeline started"})
 
+        elif p == "/coordinate_action":
+            try:
+                steps, preflight = SIM.build_coordinate_action(body)
+            except (KeyError, TypeError, ValueError) as e:
+                status = 409 if "already running" in str(e) else 400
+                self.send_json({"ok": False, "error": str(e)}, status)
+                return
+            try:
+                SIM.run_pipeline(steps)
+            except ValueError as e:
+                self.send_json({"ok": False, "error": str(e)}, 409)
+                return
+            self.send_json({
+                "ok": True,
+                "msg": "Coordinate action started",
+                "steps": steps,
+                "preflight": preflight,
+            })
+
+        elif p == "/coordinate_preview":
+            try:
+                steps, preflight = SIM.build_coordinate_action(body)
+            except (KeyError, TypeError, ValueError) as e:
+                status = 409 if "already running" in str(e) else 400
+                self.send_json({"ok": False, "error": str(e)}, status)
+                return
+            self.send_json({
+                "ok": True,
+                "msg": "Coordinate action is reachable",
+                "steps": steps,
+                "preflight": preflight,
+            })
+
+        elif p == "/radius_limits":
+            try:
+                limits = SIM.radius_limits_for_z(
+                    body["z"],
+                    wrist_angle=body.get("wrist_angle", None),
+                    orientation=body.get("orientation", body.get("gripper_orientation", "free")),
+                    max_err_mm=body.get("max_err_mm", 15.0),
+                )
+            except (KeyError, TypeError, ValueError) as e:
+                self.send_json({"ok": False, "error": str(e)}, 400)
+                return
+            self.send_json({"ok": True, **limits})
+
         elif p == "/home":
-            SIM.home()
+            try:
+                SIM.run_pipeline([{"type": "home", "label": "Home pose", "duration": 3.0}])
+            except ValueError as e:
+                self.send_json({"ok": False, "error": str(e)}, 409)
+                return
             self.send_json({"ok": True})
+
+        elif p == "/stop":
+            SIM.stop()
+            mirror_hw("/stop", {})
+            self.send_json({"ok": True, "msg": "Stopped"})
+
+        elif p == "/home_pose":
+            try:
+                pose = body.get("pose") if body else None
+                saved = SIM.set_home_pose(pose)
+            except (TypeError, ValueError, OSError) as e:
+                self.send_json({"ok": False, "error": str(e)}, 400)
+                return
+            mirror_hw("/home_pose", {"pose": saved})
+            self.send_json({"ok": True, "pose": saved, "file": HOME_POSE_FILE})
+
+        elif p == "/gripper_positions":
+            try:
+                name = body["name"]
+                value = body.get("value")
+                saved = SIM.set_gripper_position(name, value)
+            except (KeyError, TypeError, ValueError, OSError) as e:
+                self.send_json({"ok": False, "error": str(e)}, 400)
+                return
+            mirror_hw("/gripper_positions", {
+                "name": str(name).strip().lower(),
+                "value": saved[str(name).strip().lower()],
+            })
+            self.send_json({"ok": True, "positions": saved, "file": GRIPPER_POSITIONS_FILE})
 
         elif p == "/setcam":
             SIM.cam_az   = body.get("az",   SIM.cam_az)
@@ -610,7 +1199,7 @@ def main():
     print(f"  HTTP port   : {args.port}")
     print()
 
-    srv = HTTPServer(("127.0.0.1", args.port), Handler)
+    srv = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     print(f"✓ Server ready → http://127.0.0.1:{args.port}")
     print("  Open so101_dashboard.html in your browser and click Connect.")
     if args.viewer:

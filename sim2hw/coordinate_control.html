@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO-ARM101 Coordinate Control</title>
+<style>
+:root{
+  --bg:#101114;
+  --panel:#17191d;
+  --panel2:#1d2026;
+  --line:#30343c;
+  --text:#e7e9ee;
+  --muted:#9aa3b2;
+  --blue:#4f8fff;
+  --green:#35c46f;
+  --amber:#e5a93b;
+  --red:#e05f5f;
+  --input:#0d0f12;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,system-ui,sans-serif;height:100vh;overflow:hidden}
+button,input{font:inherit}
+.app{height:100vh;display:grid;grid-template-rows:52px 1fr}
+.top{display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--line);background:#14161a}
+.top h1{font-size:16px;margin:0;font-weight:750;letter-spacing:.02em}
+.badge{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted);font-weight:700}
+.badge.ok{color:var(--green);border-color:#285c3c;background:#122119}
+.badge.err{color:var(--red);border-color:#623232;background:#241616}
+.server{margin-left:auto;display:flex;align-items:center;gap:8px;min-width:420px}
+.server input{flex:1;min-width:220px}
+.main{display:grid;grid-template-columns:390px 1fr 330px;height:100%;min-height:0}
+.left,.right{background:var(--panel);overflow:auto}
+.left{border-right:1px solid var(--line)}
+.right{border-left:1px solid var(--line)}
+.section{padding:16px;border-bottom:1px solid var(--line)}
+.section h2{margin:0 0 12px;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.08em}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.field label{font-size:12px;color:var(--muted);font-weight:700}
+.range-note{font-size:11px;color:var(--muted);font-family:Consolas,monospace}
+.hint{margin-top:10px;border:1px solid var(--line);background:var(--panel2);border-radius:7px;padding:9px 10px;font-size:12px;color:var(--muted);line-height:1.45}
+.hint strong{font-family:Consolas,monospace;color:var(--text)}
+.hint.bad{border-color:#713030;background:#241616;color:#ffc7c7}
+input{width:100%;background:var(--input);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:8px 9px;outline:none}
+input:focus{border-color:var(--blue)}
+.row{display:flex;align-items:center;gap:10px}
+.btn{border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--panel2);color:var(--text);font-weight:750;cursor:pointer}
+.btn:hover{border-color:var(--blue)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:white}
+.btn.green{background:#1a5c32;border-color:#267844;color:#bff2d0}
+.btn.red{background:#552020;border-color:#713030;color:#ffc7c7}
+.btn.kill{background:#8b1111;border-color:#d63a3a;color:white}
+.btn.full{width:100%;justify-content:center}
+.seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.seg button{padding:8px;border-radius:6px;border:1px solid var(--line);background:var(--input);color:var(--muted);font-weight:750;cursor:pointer}
+.seg button.active{border-color:var(--blue);background:#17243d;color:var(--text)}
+.toggle{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:700;font-size:12px}
+.toggle input{width:16px;height:16px}
+.nudge{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.nudge button{padding:7px 0}
+.center{min-width:0;display:grid;grid-template-rows:1fr 118px;background:#090a0c}
+.render{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.render img{width:100%;height:100%;object-fit:contain;display:none}
+.empty{color:var(--muted);font-size:13px;text-align:center}
+.statusbar{border-top:1px solid var(--line);background:#14161a;padding:12px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:10px}
+.metric .k{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:750;margin-bottom:5px}
+.metric .v{font-family:Consolas,monospace;font-size:15px;color:var(--text)}
+.steps,.log{font-family:Consolas,monospace;font-size:12px;line-height:1.55;color:var(--muted);white-space:pre-wrap}
+.steps div,.log div{padding:4px 0;border-bottom:1px solid #232730}
+.ok{color:var(--green)}
+.run{color:var(--blue)}
+.err{color:var(--red)}
+@media(max-width:1050px){
+  body{overflow:auto;height:auto}
+  .app{height:auto;min-height:100vh}
+  .main{grid-template-columns:1fr;height:auto}
+  .left,.right{border:0}
+  .center{min-height:520px}
+  .server{min-width:0;width:100%}
+  .top{flex-wrap:wrap;height:auto;padding:12px}
+  .statusbar{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>SO-ARM101 Coordinate Control</h1>
+    <span id="serverBadge" class="badge err">Server offline</span>
+    <span id="hwBadge" class="badge">HW unchecked</span>
+    <div class="server">
+      <input id="serverUrl" value="http://127.0.0.1:7842">
+      <button class="btn" onclick="connectServer()">Connect</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <aside class="left">
+      <section class="section">
+        <h2>Target</h2>
+        <div class="grid3">
+          <div class="field"><label>X m</label><input id="x" type="number" value="0.25" step="0.01" min="-0.5" max="0.6"><span class="range-note">-0.50 to 0.60</span></div>
+          <div class="field"><label>Y m</label><input id="y" type="number" value="0.00" step="0.01" min="-0.5" max="0.5"><span class="range-note">-0.50 to 0.50</span></div>
+          <div class="field"><label>Z m</label><input id="z" type="number" value="0.08" step="0.005" min="-0.05" max="0.65"><span class="range-note">-0.05 to 0.65</span></div>
+        </div>
+        <div class="nudge">
+          <button class="btn" onclick="nudge('x',0.01)">X+</button>
+          <button class="btn" onclick="nudge('x',-0.01)">X-</button>
+          <button class="btn" onclick="nudge('y',0.01)">Y+</button>
+          <button class="btn" onclick="nudge('y',-0.01)">Y-</button>
+          <button class="btn" onclick="nudge('z',0.01)">Z+</button>
+          <button class="btn" onclick="nudge('z',-0.01)">Z-</button>
+        </div>
+        <div id="radiusHint" class="hint">Radius: <strong>-</strong></div>
+        <div id="zRadiusHint" class="hint">Usable radius at this Z: <strong>-</strong></div>
+      </section>
+
+      <section class="section">
+        <h2>Action</h2>
+        <div class="field">
+          <label>Before move</label>
+          <div class="seg" id="preGripperSeg">
+            <button data-value="open" class="active" onclick="setMode('pre','open')">Open</button>
+            <button data-value="hold" onclick="setMode('pre','hold')">Hold</button>
+            <button data-value="close" onclick="setMode('pre','close')">Close</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>After reach</label>
+          <div class="seg" id="postGripperSeg">
+            <button data-value="open" onclick="setMode('post','open')">Open</button>
+            <button data-value="hold" onclick="setMode('post','hold')">Hold</button>
+            <button data-value="close" class="active" onclick="setMode('post','close')">Close</button>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <label class="toggle"><input id="auto_approach" type="checkbox" checked onchange="syncApproachMode()"> Auto approach height</label>
+        </div>
+        <div class="field"><label>Approach Z m</label><input id="approach_z" type="number" value="0.15" step="0.01" min="-0.05" max="0.65" disabled></div>
+        <div class="field">
+          <label>Gripper orientation</label>
+          <div class="seg" id="orientationSeg">
+            <button data-value="downwards" onclick="setOrientationMode('downwards')">Downwards</button>
+            <button data-value="horizontal" onclick="setOrientationMode('horizontal')">Horizontal</button>
+            <button data-value="free" class="active" onclick="setOrientationMode('free')">Free</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Wrist roll rad</label>
+          <input id="wrist_angle" type="number" value="0" step="0.01" min="-2.74" max="2.84">
+          <span class="range-note">-2.74 to 2.84 rad; 37 deg = 0.65 rad</span>
+        </div>
+        <div class="row">
+          <label class="toggle"><input id="retreat" type="checkbox" checked> Retreat after action</label>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Motion</h2>
+        <div class="field"><label>Move duration s</label><input id="duration" type="number" value="3.0" step="0.1" min="0.2" max="10"></div>
+        <div class="field"><label>Settle s</label><input id="settle_time" type="number" value="0.8" step="0.1" min="0" max="5"></div>
+        <div class="field"><label>Max IK error mm</label><input id="max_err_mm" type="number" value="15" step="1" min="1" max="100"></div>
+        <button id="checkBtn" class="btn full" onclick="checkReachability()">Check Reach</button>
+        <button id="runBtn" class="btn green full" onclick="runCoordinateAction()">Run Coordinate Action</button>
+      </section>
+
+      <section class="section">
+        <div class="row">
+          <button class="btn kill" onclick="killSwitch()">Kill Switch</button>
+          <button class="btn" onclick="captureCurrent()">Capture EE</button>
+          <button class="btn red" onclick="homeArm()">Home</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Home Pose</h2>
+        <button id="saveHomeBtn" class="btn primary full" onclick="saveCurrentAsHome()">Record Current As Home</button>
+        <div id="homePose" class="hint">Saved Home: loading...</div>
+      </section>
+
+      <section class="section">
+        <h2>Gripper Positions</h2>
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn" onclick="setGripperTorque(false)">Unlock Gripper</button>
+          <button class="btn" onclick="setGripperTorque(true)">Lock Gripper</button>
+        </div>
+        <div class="row">
+          <button class="btn primary" onclick="recordGripperPosition('open')">Record Open</button>
+          <button class="btn primary" onclick="recordGripperPosition('close')">Record Close</button>
+        </div>
+        <div id="gripperPositions" class="hint">Saved gripper: loading...</div>
+      </section>
+    </aside>
+
+    <section class="center">
+      <div class="render">
+        <img id="renderImg" alt="Simulation render">
+        <div id="empty" class="empty">Connect to the IK server</div>
+      </div>
+      <div class="statusbar">
+        <div class="metric"><div class="k">End effector</div><div id="ee" class="v">-</div></div>
+        <div class="metric"><div class="k">IK error</div><div id="ikErr" class="v">-</div></div>
+        <div class="metric"><div class="k">Pipeline</div><div id="pipeline" class="v">Idle</div></div>
+        <div class="metric"><div class="k">Viewer</div><div id="viewer" class="v">-</div></div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <section class="section">
+        <h2>Generated Steps</h2>
+        <div id="steps" class="steps">No command sent.</div>
+      </section>
+      <section class="section">
+        <h2>Execution Log</h2>
+        <div id="log" class="log">Ready.</div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script>
+let SERVER = 'http://127.0.0.1:7842';
+let connected = false;
+let pollTimer = null;
+let preGripperMode = 'open';
+let postGripperMode = 'close';
+let orientationMode = 'free';
+let lastState = null;
+let hwOnline = false;
+const HW_BRIDGE_URL = 'http://127.0.0.1:7843';
+const MIN_TARGET_RADIUS = 0.12;
+const Z_MIN = -0.05;
+const Z_MAX = 0.65;
+const WRIST_MIN = -2.74;
+const WRIST_MAX = 2.84;
+let radiusLimitTimer = null;
+let preserveLocalLog = false;
+let currentRadiusLimits = null;
+
+async function api(method, path, body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json'}};
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(SERVER + path, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+function log(msg, cls='') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<div class="${cls}">${escapeHtml(msg)}</div>`;
+  el.scrollTop = el.scrollHeight;
+  preserveLocalLog = true;
+}
+
+function setStepsMessage(msg, cls='') {
+  document.getElementById('steps').innerHTML = `<div class="${cls}">${escapeHtml(msg)}</div>`;
+}
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function val(id) {
+  return parseFloat(document.getElementById(id).value);
+}
+
+function targetRadius() {
+  const x = val('x');
+  const y = val('y');
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return NaN;
+  return Math.hypot(x, y);
+}
+
+function updateTargetHint() {
+  const radius = targetRadius();
+  const z = val('z');
+  const hint = document.getElementById('radiusHint');
+  const runBtn = document.getElementById('runBtn');
+  if (!Number.isFinite(radius)) {
+    hint.innerHTML = 'Radius: <strong>-</strong>';
+    hint.classList.add('bad');
+    runBtn.disabled = true;
+    return;
+  }
+  const tooClose = radius < MIN_TARGET_RADIUS;
+  const lowZ = Number.isFinite(z) && z < 0.0;
+  hint.innerHTML = tooClose
+    ? `Radius: <strong>${radius.toFixed(3)} m</strong>. Increase X or Y to at least ${MIN_TARGET_RADIUS.toFixed(2)} m.`
+    : `Radius: <strong>${radius.toFixed(3)} m</strong>${lowZ ? '. Low pickup range: use Check Reach before running.' : ''}`;
+  hint.classList.toggle('bad', tooClose || lowZ);
+  updateControlAvailability();
+  scheduleRadiusLimitUpdate();
+}
+
+function wristAngleIsValid() {
+  const wrist = val('wrist_angle');
+  return Number.isFinite(wrist) && wrist >= WRIST_MIN && wrist <= WRIST_MAX;
+}
+
+function updateWristHint() {
+  updateControlAvailability();
+  scheduleRadiusLimitUpdate();
+}
+
+function updateControlAvailability() {
+  const radius = targetRadius();
+  let targetOk = Number.isFinite(radius) && radius >= MIN_TARGET_RADIUS;
+  if (currentRadiusLimits && currentRadiusLimits.min_radius !== null) {
+    targetOk = targetOk &&
+      radius >= currentRadiusLimits.min_radius &&
+      radius <= currentRadiusLimits.max_radius;
+  } else if (currentRadiusLimits && currentRadiusLimits.min_radius === null) {
+    targetOk = false;
+  }
+  const wristOk = wristAngleIsValid();
+  document.getElementById('runBtn').disabled = !targetOk || !wristOk;
+  document.getElementById('checkBtn').disabled = !targetOk || !wristOk;
+}
+
+function syncApproachMode() {
+  const auto = document.getElementById('auto_approach').checked;
+  document.getElementById('approach_z').disabled = auto;
+}
+
+function scheduleRadiusLimitUpdate() {
+  clearTimeout(radiusLimitTimer);
+  radiusLimitTimer = setTimeout(updateRadiusLimitText, 250);
+}
+
+async function updateRadiusLimitText() {
+  const el = document.getElementById('zRadiusHint');
+  if (!connected) {
+    currentRadiusLimits = null;
+    el.innerHTML = 'Usable radius at this Z: <strong>-</strong>';
+    updateControlAvailability();
+    return;
+  }
+  const z = val('z');
+  if (!Number.isFinite(z)) {
+    currentRadiusLimits = null;
+    el.innerHTML = 'Usable radius at this Z: <strong>-</strong>';
+    el.classList.add('bad');
+    updateControlAvailability();
+    return;
+  }
+  try {
+    const r = await api('POST', '/radius_limits', {
+      z,
+      wrist_angle: val('wrist_angle'),
+      orientation: orientationMode,
+      max_err_mm: val('max_err_mm'),
+    });
+    currentRadiusLimits = r;
+    const radius = targetRadius();
+    if (r.min_radius === null) {
+      el.innerHTML = `Usable radius at Z=${z.toFixed(3)} m: <strong>not reachable</strong>`;
+      el.classList.add('bad');
+    } else {
+      el.innerHTML = `Usable radius at Z=${z.toFixed(3)} m: <strong>${r.min_radius.toFixed(3)}-${r.max_radius.toFixed(3)} m</strong>`;
+      el.classList.toggle('bad', Number.isFinite(radius) && (radius < r.min_radius || radius > r.max_radius));
+    }
+  } catch (e) {
+    currentRadiusLimits = null;
+    el.innerHTML = 'Usable radius at this Z: <strong>unavailable</strong>';
+    el.classList.add('bad');
+  }
+  updateControlAvailability();
+}
+
+function setBadge(id, text, cls='') {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = `badge ${cls}`;
+}
+
+async function connectServer() {
+  SERVER = document.getElementById('serverUrl').value.trim().replace(/\/+$/, '') || SERVER;
+  try {
+    const state = await api('GET', '/state');
+    connected = true;
+    setBadge('serverBadge', 'Server online', 'ok');
+    document.getElementById('empty').style.display = 'none';
+    document.getElementById('renderImg').style.display = 'block';
+    updateState(state);
+    startPolling();
+    checkHardware();
+    loadHomePose();
+    loadGripperPositions();
+    refreshRender();
+    updateRadiusLimitText();
+    log('Connected to IK server', 'ok');
+  } catch (e) {
+    connected = false;
+    setBadge('serverBadge', 'Server offline', 'err');
+    log('Connect failed: ' + e.message, 'err');
+  }
+}
+
+async function checkHardware() {
+  try {
+    const r = await fetch(`${HW_BRIDGE_URL}/ping`);
+    const data = await r.json();
+    hwOnline = Boolean(data.connected);
+    setBadge('hwBadge', data.connected ? 'HW online' : 'HW mock', data.connected ? 'ok' : '');
+  } catch (e) {
+    hwOnline = false;
+    setBadge('hwBadge', 'HW offline', '');
+  }
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if (!connected) return;
+    try {
+      const state = await api('GET', '/state');
+      updateState(state);
+      if (!state.pipeline_running) refreshRender();
+    } catch (e) {
+      connected = false;
+      setBadge('serverBadge', 'Server offline', 'err');
+    }
+  }, 800);
+}
+
+function updateState(s) {
+  lastState = s;
+  const [x,y,z] = s.ee;
+  document.getElementById('ee').textContent = `[${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)}]`;
+  document.getElementById('ikErr').textContent = `${s.ik_err_mm} mm`;
+  document.getElementById('pipeline').textContent = s.pipeline_running ? 'Running' : 'Idle';
+  document.getElementById('pipeline').style.color = s.pipeline_running ? 'var(--blue)' : 'var(--text)';
+  document.getElementById('viewer').textContent = s.viewer_open ? 'Open' : 'Closed';
+  if (s.pipeline_log && s.pipeline_log.length && (s.pipeline_running || !preserveLocalLog)) {
+    document.getElementById('log').innerHTML = s.pipeline_log.map(line => {
+      const cls = line.startsWith('âœ…') ? 'ok' : line.startsWith('â–¶') ? 'run' : '';
+      return `<div class="${cls}">${escapeHtml(line)}</div>`;
+    }).join('');
+    preserveLocalLog = s.pipeline_running;
+  }
+}
+
+async function refreshRender() {
+  if (!connected) return;
+  try {
+    const r = await api('GET', '/render');
+    if (r.png) document.getElementById('renderImg').src = 'data:image/png;base64,' + r.png;
+  } catch (e) {}
+}
+
+function setMode(phase, mode) {
+  if (phase === 'pre') {
+    preGripperMode = mode;
+  } else {
+    postGripperMode = mode;
+  }
+  const segId = phase === 'pre' ? 'preGripperSeg' : 'postGripperSeg';
+  document.querySelectorAll(`#${segId} button`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === mode);
+  });
+}
+
+function setOrientationMode(mode) {
+  orientationMode = mode;
+  document.querySelectorAll('#orientationSeg button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === mode);
+  });
+  scheduleRadiusLimitUpdate();
+}
+
+function nudge(axis, delta) {
+  const el = document.getElementById(axis);
+  el.value = (parseFloat(el.value) + delta).toFixed(3);
+  updateTargetHint();
+}
+
+function captureCurrent() {
+  if (!lastState) return;
+  const [x,y,z] = lastState.ee;
+  document.getElementById('x').value = x.toFixed(4);
+  document.getElementById('y').value = y.toFixed(4);
+  document.getElementById('z').value = z.toFixed(4);
+  document.getElementById('approach_z').value = Math.min(Math.max(z + 0.08, 0.12), Z_MAX).toFixed(4);
+  updateTargetHint();
+  log('Captured current end-effector position', 'ok');
+}
+
+async function homeArm() {
+  if (!connected) return;
+  try {
+    await api('POST', '/home');
+    log('Home command sent', 'ok');
+    await waitForPipeline('Home complete');
+    refreshRender();
+  } catch (e) {
+    log('Home failed: ' + e.message, 'err');
+  }
+}
+
+async function killSwitch() {
+  if (!connected) return;
+  preserveLocalLog = false;
+  try {
+    await api('POST', '/stop');
+    document.getElementById('log').innerHTML = '<div class="err">Kill switch sent. Holding current position.</div>';
+    setStepsMessage('Stopped.', 'err');
+    refreshRender();
+  } catch (e) {
+    log('Kill switch failed: ' + e.message, 'err');
+  }
+}
+
+async function loadHomePose() {
+  if (!connected) return;
+  try {
+    const r = await api('GET', '/home_pose');
+    renderHomePose(r.pose);
+  } catch (e) {
+    document.getElementById('homePose').textContent = 'Saved Home: unavailable';
+  }
+}
+
+async function loadGripperPositions() {
+  if (!connected) return;
+  try {
+    const r = await api('GET', '/gripper_positions');
+    renderGripperPositions(r.positions);
+  } catch (e) {
+    document.getElementById('gripperPositions').textContent = 'Saved gripper: unavailable';
+  }
+}
+
+function renderHomePose(pose) {
+  if (!pose) return;
+  const text = ['shoulder_pan','shoulder_lift','elbow_flex','wrist_flex','wrist_roll','gripper']
+    .map(name => `${name}: ${Number(pose[name]).toFixed(3)}`)
+    .join('\n');
+  document.getElementById('homePose').innerHTML = `Saved Home:<br><strong>${escapeHtml(text)}</strong>`;
+}
+
+function renderGripperPositions(positions) {
+  if (!positions) return;
+  document.getElementById('gripperPositions').innerHTML =
+    `Saved gripper:<br><strong>open: ${Number(positions.open).toFixed(4)}<br>close: ${Number(positions.close).toFixed(4)}</strong>`;
+}
+
+async function setGripperTorque(enabled) {
+  await checkHardware();
+  if (!hwOnline) {
+    log('Hardware bridge is offline; gripper torque can only be changed on the real arm.', 'err');
+    return;
+  }
+  try {
+    const r = await fetch(`${HW_BRIDGE_URL}/gripper_torque`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({enabled}),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    log(enabled ? 'Gripper locked' : 'Gripper unlocked for manual positioning', enabled ? 'ok' : 'run');
+  } catch (e) {
+    log('Gripper torque command failed: ' + e.message, 'err');
+  }
+}
+
+async function recordGripperPosition(name) {
+  if (!connected) { alert('Connect to server first'); return; }
+  try {
+    await checkHardware();
+    let value = null;
+    if (hwOnline) {
+      const hw = await fetch(`${HW_BRIDGE_URL}/joints`);
+      const data = await hw.json();
+      value = data.joints.gripper;
+    } else if (lastState && lastState.joints) {
+      value = lastState.joints.gripper;
+    }
+    const r = await api('POST', '/gripper_positions', {name, value});
+    renderGripperPositions(r.positions);
+    log(`Recorded gripper ${name} position: ${Number(r.positions[name]).toFixed(4)}`, 'ok');
+  } catch (e) {
+    log(`Record gripper ${name} failed: ${e.message}`, 'err');
+  }
+}
+
+async function saveCurrentAsHome() {
+  if (!connected) { alert('Connect to server first'); return; }
+  const btn = document.getElementById('saveHomeBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    await checkHardware();
+    let payload = null;
+    if (hwOnline) {
+      const hw = await fetch(`${HW_BRIDGE_URL}/joints`);
+      const data = await hw.json();
+      payload = {pose: data.joints};
+    }
+    const r = await api('POST', '/home_pose', payload);
+    renderHomePose(r.pose);
+    log(hwOnline ? 'Recorded hardware joint pose as Home' : 'Recorded simulator joint pose as Home', 'ok');
+  } catch (e) {
+    log('Save Home failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Record Current As Home';
+  }
+}
+
+async function runCoordinateAction() {
+  if (!connected) { alert('Connect to server first'); return; }
+  updateTargetHint();
+  updateWristHint();
+  if (targetRadius() < MIN_TARGET_RADIUS) return;
+  if (!wristAngleIsValid()) return;
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  preserveLocalLog = false;
+  document.getElementById('log').innerHTML = '<div class="run">Starting coordinate action...</div>';
+  document.getElementById('steps').innerHTML = 'Waiting for generated steps...';
+  try {
+    const payload = coordinatePayload();
+    const r = await api('POST', '/coordinate_action', payload);
+    renderSteps(r.steps, r.preflight);
+    log('Coordinate action accepted', 'ok');
+    await waitForPipeline('Coordinate action complete');
+  } catch (e) {
+    setStepsMessage(e.message, 'err');
+    log('Coordinate action failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Coordinate Action';
+    refreshRender();
+  }
+}
+
+function coordinatePayload(overrides={}) {
+  const payload = {
+    x: val('x'),
+    y: val('y'),
+    z: val('z'),
+    pre_gripper: preGripperMode,
+    post_gripper: postGripperMode,
+    orientation: orientationMode,
+    wrist_angle: val('wrist_angle'),
+    duration: val('duration'),
+    settle_time: val('settle_time'),
+    max_err_mm: val('max_err_mm'),
+    retreat: document.getElementById('retreat').checked,
+    ...overrides,
+  };
+  if (!document.getElementById('auto_approach').checked) {
+    payload.approach_z = val('approach_z');
+  }
+  return payload;
+}
+
+async function checkReachability() {
+  if (!connected) { alert('Connect to server first'); return; }
+  updateTargetHint();
+  updateWristHint();
+  if (targetRadius() < MIN_TARGET_RADIUS) return;
+  if (!wristAngleIsValid()) return;
+  const btn = document.getElementById('checkBtn');
+  btn.disabled = true;
+  btn.textContent = 'Checking...';
+  preserveLocalLog = false;
+  try {
+    const payload = coordinatePayload({
+      pre_gripper: 'hold',
+      post_gripper: 'hold',
+      retreat: false,
+      duration: 0.2,
+      settle_time: 0,
+    });
+    const r = await api('POST', '/coordinate_preview', payload);
+    renderSteps(r.steps, r.preflight);
+    log('Reach check passed', 'ok');
+  } catch (e) {
+    setStepsMessage(e.message, 'err');
+    log('Reach check failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Check Reach';
+  }
+}
+
+function renderSteps(steps, preflight) {
+  const checks = (preflight || []).map(c => `<div class="ok">${escapeHtml(c.label)} preflight: ${c.err_mm} mm</div>`).join('');
+  const rows = (steps || []).map((s,i) => {
+    let text = `${i + 1}. ${s.type}`;
+    if (s.type === 'move_ik') text += ` x=${s.x} y=${s.y} z=${s.z} orientation=${s.orientation || 'free'}`;
+    if (s.type === 'gripper') text += ` value=${s.value}`;
+    return `<div>${escapeHtml(text)}</div>`;
+  }).join('');
+  document.getElementById('steps').innerHTML = checks + rows;
+}
+
+async function waitForPipeline(doneMessage='Pipeline complete') {
+  let sawRunning = false;
+  while (connected) {
+    await new Promise(resolve => setTimeout(resolve, 700));
+    const state = await api('GET', '/state');
+    updateState(state);
+    if (state.pipeline_running) sawRunning = true;
+    if (!state.pipeline_running) {
+      const failed = state.pipeline_log.some(line => line.includes('failed') || line.includes('STOP') || line.includes('Stopped'));
+      if (failed) {
+        log('Pipeline stopped', 'err');
+      } else if (sawRunning || state.pipeline_log.some(line => line.includes('complete'))) {
+        log(doneMessage, 'ok');
+      }
+      break;
+    }
+  }
+}
+
+setMode('pre', 'open');
+setMode('post', 'close');
+setOrientationMode('free');
+['x','y','z'].forEach(id => document.getElementById(id).addEventListener('input', updateTargetHint));
+document.getElementById('wrist_angle').addEventListener('input', updateWristHint);
+document.getElementById('max_err_mm').addEventListener('input', scheduleRadiusLimitUpdate);
+syncApproachMode();
+updateTargetHint();
+updateWristHint();
+setTimeout(connectServer, 400);
+</script>
+</body>
+</html>

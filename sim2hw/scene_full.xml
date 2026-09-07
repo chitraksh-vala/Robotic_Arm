@@ -23,7 +23,7 @@
     <body name="ik_target" pos="0.20 0.0 0.30">
       <joint name="tgt_x" type="slide" axis="1 0 0" range="-0.5 0.5" damping="100"/>
       <joint name="tgt_y" type="slide" axis="0 1 0" range="-0.5 0.5" damping="100"/>
-      <joint name="tgt_z" type="slide" axis="0 0 1" range="0.01 0.6"  damping="100"/>
+      <joint name="tgt_z" type="slide" axis="0 0 1" range="-0.05 0.65"  damping="100"/>
       <geom name="tgt_sphere" type="sphere" size="0.015" material="target_mat" contype="0" conaffinity="0"/>
     </body>
 
