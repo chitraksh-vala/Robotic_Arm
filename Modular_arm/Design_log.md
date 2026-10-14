@@ -1,6 +1,6 @@
 # Design Log - Custom Modular Robotic Arm
 
-Last updated: 2026-08-31  
+Last updated: 2026-10-14
 Scope: full provisional mechanical design workflow for the custom modular arm in `Modular_arm`.  
 Status: concept-ready baseline for CAD and gearbox selection, not a manufacturing release.
 
@@ -49,10 +49,12 @@ Status: concept-ready baseline for CAD and gearbox selection, not a manufacturin
 
 | Item | Use in design | Status |
 |---|---|---|
-| 3x Rtelligent 42AM08 stepper | J1, J2, J3 main joints with external gearbox and encoder. | Confirmed |
+| 3x Rtelligent 42AM08 stepper | J1, J2, J3 main joints with external gearboxes; operated without external encoders. | Confirmed |
 | 3x RMCS-1120 driver | Stepper drive electronics, kept off-arm where practical. | Confirmed |
-| 3x Omron E6B2 encoder | Feedback for J1-J3. | Confirmed |
-| 3x Waveshare ST3215 servo | J4, J5, and G1 mechanical gripper. | Confirmed |
+| 3x Omron E6B2 encoder | Not used in the current design; external encoder mass is excluded. | User-directed |
+| J1-J3 position reference | Use repeatable homing/limit references and validate missed-step behaviour because the stepper axes are open-loop. | Required |
+| J2 motor revision | Replace the original NEMA 17 with StepperOnline `23HS45-3504S` NEMA 23: `3.0 N.m` holding torque, `3.5 A/phase`, `1.60 kg`. | Current provisional |
+| 3x Waveshare ST3215 servo | Retain one for G1 mechanical gripper; J4/J5 are replaced by NEMA 17s. | User directed |
 | Stepper holding torque | Corrected to `0.80 N.m` after user verified website/datasheet. | Confirmed |
 | ST3215 torque | `30 kg.cm` stall/locked-rotor reference, not continuous torque. | Validation required |
 
@@ -126,23 +128,25 @@ z = H + L1*sin(q2) + L2*sin(q23) + Lt*sin(phi)
 |---|---:|---|---|
 | Upper link | `0.300 kg` | L1 structural link only. | Provisional |
 | Upper cable/tubing | `0.075 kg` | Distributed along L1. | Provisional |
-| J3 moving assembly | `1.260 kg` | Motor, encoder, assumed gearbox, brackets and bearings. | Provisional |
+| J3 moving assembly | `1.160 kg` | Motor, assumed gearbox, brackets and bearings; no external encoder. | Provisional |
 | Forearm link | `0.280 kg` | L2 structural link only. | Provisional |
 | Forearm cable/tubing | `0.075 kg` | Distributed along L2. | Provisional |
 | Wrist assembly | `0.300 kg` | Two ST3215 servos plus wrist brackets/bearings. | Provisional |
 | Tool/gripper/interface | `0.500 kg` | Conservative modular tool value. | Provisional |
 | Payload object | `0.750 kg` | Object-only load. | Confirmed |
-| Distal moving mass carried by J2 | `3.540 kg` | Sum of moving masses beyond/including L1 loads. | Preliminary |
+| Distal moving mass carried by J2 | `3.440 kg` | Sum of moving masses beyond/including L1 loads. | Preliminary |
+
+Encoder-removal update: removing all three external encoders eliminates approximately `0.300 kg` of hardware. Only the former `0.100 kg` J3 encoder was a distal gravity load in the current J2 model, so the modelled J2-carried mass decreases by `0.100 kg`, from `3.540 kg` to `3.440 kg`. J1 and J2 encoder masses were located at or near their supporting axes and were not included as distal J2 gravity loads.
 
 ## 10. Torque Model
 
 | Joint | Static + dynamic sizing result | Interpretation | Status |
 |---|---:|---|---|
-| J1 | `1.452 N.m` minimum output capacity | Low torque, mainly inertia/friction. | Complete |
-| J2 | `25.117 N.m` minimum output capacity | Main design driver. | Complete |
-| J3 | `9.115 N.m` minimum output capacity | Moderate. | Complete |
-| J4 | `1.638 N.m` minimum output capacity | Possible with ST3215, but thermal validation required. | Complete |
-| J5 | `0.506 N.m` minimum output capacity | Acceptable with ST3215. | Complete |
+| J1 | `2.114 N.m` minimum output capacity | Includes NEMA 23 J2 and heavier wrist-stepper inertia. | Recalculated |
+| J2 | `37.116 N.m` minimum output capacity | Main design driver with local wrist-mounted steppers. | Recalculated |
+| J3 | `15.472 N.m` minimum output capacity | Increased by wrist-stepper mass. | Recalculated |
+| J4 | `2.239 N.m` minimum output capacity | NEMA 17 replacement in local wrist-mounted model. | Recalculated |
+| J5 | `0.505 N.m` minimum output capacity | NEMA 17 replacement in local wrist-mounted model. | Recalculated |
 
 Torque method:
 
@@ -156,9 +160,9 @@ minimum output capacity = preliminary demand / 0.67
 
 | Candidate | L1 | L2 | J2 capacity | J3 capacity | Result |
 |---|---:|---:|---:|---:|---|
-| Current | `280 mm` | `260 mm` | `25.117 N.m` | `9.115 N.m` | Baseline |
-| Best compromise trial | `250 mm` | `290 mm` | `24.480 N.m` | `10.100 N.m` | Valid but not adopted |
-| Most balanced trial | `240 mm` | `300 mm` | `24.268 N.m` | `10.432 N.m` | Valid but more aggressive |
+| Current | `280 mm` | `260 mm` | `24.653 N.m` | `9.115 N.m` | Baseline |
+| Best compromise trial | `250 mm` | `290 mm` | `24.068 N.m` | `10.100 N.m` | Valid but not adopted |
+| Most balanced trial | `240 mm` | `300 mm` | `23.874 N.m` | `10.432 N.m` | Valid but more aggressive |
 
 Decision: keep `280/260` because link split alone reduced J2 only slightly. It is not worth changing the already-tested workspace baseline before CAD.
 
@@ -166,12 +170,12 @@ Decision: keep `280/260` because link split alone reduced J2 only slightly. It i
 
 | Strategy | J2 capacity result | Reduction vs baseline | Decision |
 |---|---:|---:|---|
-| Baseline | `25.117 N.m` | `0.0 percent` | Current version |
-| Link split only | `24.480 N.m` | `2.5 percent` | Too small alone |
-| Very light tool | `22.605 N.m` | `10.0 percent` | Useful if achievable |
-| Mass optimization combo | `21.169 N.m` | `15.7 percent` | Useful future improvement |
-| 5 N.m counterbalance | `16.908 N.m` | `32.7 percent` | Strong future option |
-| 8 N.m counterbalance | `11.983 N.m` | `52.3 percent` | Strong future option |
+| Baseline | `24.653 N.m` | `0.0 percent` | Current version |
+| Link split only | `24.068 N.m` | `2.4 percent` | Too small alone |
+| Very light tool | `22.142 N.m` | `10.2 percent` | Useful if achievable |
+| Mass optimization combo | `21.169 N.m` | `14.1 percent` | Useful future improvement |
+| 5 N.m counterbalance | `16.445 N.m` | `33.3 percent` | Strong future option |
+| 8 N.m counterbalance | `11.519 N.m` | `53.3 percent` | Strong future option |
 
 Decision: counterbalance is the strongest way to reduce J2, but the current selected design uses gearbox-only J2 because the user chose that route for now.
 
@@ -179,14 +183,14 @@ Decision: counterbalance is the strongest way to reduce J2, but the current sele
 
 | Topic / item | Value | Status |
 |---|---:|---|
-| J2 output torque target | `25.117 N.m` | From torque model |
+| J2 output torque target | `24.653 N.m` | From torque model |
 | J2 joint speed target | `30 deg/s = 5 rpm` | Provisional |
 | Selected J2 gearbox | `100:1` | Selected provisional |
 | Motor speed at target | `500 rpm` | Derived |
-| Required motor torque at 75 percent gearbox efficiency | `0.335 N.m` | Derived |
+| Required motor torque at 75 percent gearbox efficiency | `0.329 N.m` | Derived |
 | User-supplied curve torque at 500 rpm | about `0.53 N.m` | Used for screening |
 | Available output torque estimate | about `39.75 N.m` | Derived |
-| Torque margin | about `1.58x` | Pass for concept |
+| Torque margin | about `1.61x` | Pass for concept |
 
 Decision: `100:1` is the selected provisional J2 gearbox ratio for the no-counterbalance version.
 
@@ -194,11 +198,11 @@ Decision: `100:1` is the selected provisional J2 gearbox ratio for the no-counte
 
 | Joint | Actuator | Ratio / drive | Target speed | Status |
 |---|---|---:|---:|---|
-| J1 | Rtelligent 42AM08 + gearbox + Omron encoder | `10:1` | `30 deg/s` | Selected provisional |
-| J2 | Rtelligent 42AM08 + gearbox + Omron encoder | `100:1` | `30 deg/s` | Selected provisional, critical |
-| J3 | Rtelligent 42AM08 + gearbox + Omron encoder | `40:1` | `30 deg/s` | Selected provisional |
-| J4 | Waveshare ST3215 | Internal gearing | `60 deg/s` | Selected, thermal validation required |
-| J5 | Waveshare ST3215 | Internal gearing | `60 deg/s` | Selected |
+| J1 | Rtelligent 42AM08 + gearbox, no external encoder | `10-15:1` | `30 deg/s` | Current provisional |
+| J2 | StepperOnline 23HS45-3504S NEMA 23 + gearbox, no external encoder | `50-60:1` | `30 deg/s` | Current provisional, critical |
+| J3 | Rtelligent 42AM08 + gearbox, no external encoder | `50-60:1` | `30 deg/s` | Current provisional |
+| J4 | Rtelligent 42AM08 + gearbox, no external encoder | `10-15:1` | `60 deg/s` | Current provisional |
+| J5 | Rtelligent 42AM08 + gearbox, no external encoder | `5-10:1` | `60 deg/s` | Current provisional |
 | G1 | Waveshare ST3215 | Gripper linkage | TBD | Selected for mechanical gripper |
 
 ## 15. Link Material and Section Decision
@@ -214,7 +218,7 @@ Structural check result:
 
 | Link | Tube-only mass | Design mass | Deflection estimate | Stress estimate | Status |
 |---|---:|---:|---:|---:|---|
-| L1 | `0.246 kg` | `0.300 kg` | `0.047 mm` | `2.46 MPa` | Pass concept |
+| L1 | `0.246 kg` | `0.300 kg` | `0.045 mm` | `2.38 MPa` | Pass concept |
 | L2 | `0.157 kg` | `0.280 kg` | `0.035 mm` | `1.86 MPa` | Pass concept |
 
 ## 16. Accuracy and Backlash Targets
@@ -225,7 +229,7 @@ Structural check result:
 | TCP repeatability | `+/-3 mm` at `640 mm` reach corresponds to about `+/-0.269 deg`. | Provisional |
 | J2/J3 backlash target | Prefer loaded output backlash `<=0.15 deg`; absolute maximum target `<=0.30 deg`. | Provisional |
 | Step resolution | J2 with `100:1` and `1600 microsteps/rev` gives `0.00225 deg` ideal output step. | Resolution is not limiting |
-| Main accuracy concern | Backlash, compliance, calibration, and bracket stiffness. | Important |
+| Main accuracy concern | Backlash, compliance, homing repeatability, missed steps, and bracket stiffness. | Important |
 
 ## 17. Mechanical Gripper Direction
 
@@ -276,14 +280,15 @@ Structural check result:
 | `analysis_artifacts/J2_torque_reduction_study.md` | J2 torque reduction strategies. |
 | `analysis_artifacts/J2_gearbox_sizing_check.md` | J2 gearbox-only screen. |
 | `analysis_artifacts/Final_design_sizing.md` | Final sizing calculations. |
+| `analysis_artifacts/NEMA23_J2_recalculation.md` | Current NEMA 23 J2 torque and gearbox-range calculation. |
 
 ## 21. Current Final Output
 
 | Topic / item | Current final provisional output | Status |
 |---|---|---|
 | Geometry | `H = 180 mm`, `L1 = 280 mm`, `L2 = 260 mm`, `Lt = 100 mm`. | Selected |
-| Drivetrain | J1 `10:1`, J2 `100:1`, J3 `40:1`; J4/J5 ST3215. | Selected provisional |
-| Main link material | 6061-T6 aluminium rectangular tube. | Selected provisional |
+| Drivetrain | J1 `10-15:1`, J2 `50-60:1`, J3 `50-60:1`, J4 `10-15:1`, J5 `5-10:1`; all arm joints are steppers. | Current provisional |
+| Main link material | `40 mm OD x 36 mm ID` 3K roll-wrapped carbon-fibre twill tube for both links. | Current provisional |
 | J2 design approach | Gearbox-only, no counterbalance in current version. | Selected |
 | Mechanical gripper | ST3215-driven near-parallel two-finger gripper. | Selected direction |
 | Modular interface | Mechanical datums + positive lock + pogo electrical connector. | Selected direction |
@@ -296,6 +301,58 @@ Structural check result:
 | CAD skeleton | Build axes, link tubes, gearbox envelopes, wrist and modular interface. |
 | Collision validation | Check CP2 folded pose, CP1 downward pose, CP3 high pose, R600 boundary, base keep-out and self-collision. |
 | Real mass update | Replace provisional masses with CAD mass properties and rerun torque scripts. |
-| J4 thermal validation | Test/confirm ST3215 continuous holding capacity for wrist pitch. |
+| Open-loop validation | Add homing/limit references and verify J1-J3 do not lose steps over the required load and duty cycle. |
+
+## 24. NEMA 23 J2 Recalculation
+
+| Topic / item | Updated result | Status |
+|---|---|---|
+| J2 motor | StepperOnline `23HS45-3504S` NEMA 23, `3.0 N.m` holding torque and `1.60 kg` mass. | User selected |
+| Motor placement model | Included as `1.60 kg` at a `56.5 mm` yaw radius for J1 acceleration only; it is on the J2 pitch axis, so it does not add J2 pitch gravity torque. | Applied |
+| J1/J2/J3 output capacity | Superseded by the all-stepper wrist calculation. | Superseded |
+| Gearbox ranges | J1 `10-15:1`, J2 `30-40:1`, J3 `35-50:1`. | Current provisional |
+| J2 conservative margin | `1.4-1.9x` with a 50%-of-holding-torque dynamic screen at `150-200 rpm`. | Validation required |
+| J2 electronics | Separate driver rated for at least `3.5 A/phase` is required. | Required |
+| Detailed calculation | See `analysis_artifacts/NEMA23_J2_recalculation.md`. | Complete |
+
+## 25. NEMA 17 Wrist Replacement
+
+| Topic / item | Updated result | Status |
+|---|---|---|
+| Joint allocation | Four original NEMA 17s are assigned to J1, J3, J4 and J5. The NEMA 23 remains at J2; ST3215 remains only for G1. | User directed |
+| Wrist mass model | Conservative local-wrist J4/J5 actuator assemblies: `0.910 kg` at the wrist and `0.760 kg` at 50 mm distal. | Provisional |
+| J2-carried distal mass | `4.640 kg`. | Recalculated |
+| J1/J2/J3/J4/J5 capacity | `2.114 / 37.116 / 15.472 / 2.239 / 0.505 N.m`. | Recalculated |
+| Gearbox ranges | J1 `10-15:1`, J2 `50-60:1`, J3 `50-60:1`, J4 `10-15:1`, J5 `5-10:1`. | Current provisional |
+| Consequence | Local wrist steppers are feasible but materially increase J2/J3 torque. Evaluate elbow-mounted/belt-driven wrist actuators before hardware purchase. | Important |
+| Detailed calculation | See `analysis_artifacts/NEMA17_wrist_recalculation.md`. | Complete |
+| Wrist-stepper packaging validation | Confirm J4/J5 gearbox masses, envelope and collision clearance in CAD; then rerun torque calculations. |
 | Pogo current validation | Choose pogo pins/contact count after checking servo and valve current. |
 | Gripper CAD | Design actual linkage, stops, finger pads and mounting interface. |
+
+## 23. Carbon-Fibre Link Recalculation
+
+| Topic / item | Updated result | Status |
+|---|---|---|
+| Requested tube | 3K roll-wrapped carbon-fibre twill, matte; `40 mm OD x 36 mm ID` for both L1 and L2. | User specified |
+| Mass treatment | Bare tube masses are `0.107 kg` for L1 and `0.099 kg` for L2. Torque model uses `0.210 kg` and `0.200 kg` respectively, retaining reserve for inserts/local protection. | Applied |
+| Encoder treatment | NEMA internal encoder is assumed included in stated motor mass. External-encoder mass remains zero. | Applied |
+| Selected lengths | L1 = `280 mm`; L2 = `260 mm`. CF-mass sweep still retains this geometry. | Selected provisional |
+| J1/J2/J3 capacity | Superseded by the all-stepper wrist calculation. | Superseded |
+| Gearbox ranges | J1 `10-15:1`, J2 `100-120:1`, J3 `35-50:1`. | Current provisional |
+| Structural result | L1/L2 simplified deflection = `0.077/0.032 mm`; nominal stress = `3.79/1.83 MPa`. | Concept pass |
+| Detailed calculation | See `analysis_artifacts/Carbon_fiber_40x36_recalculation.md`. | Complete |
+
+## 26. Linked Product Selection Recalculation
+
+| Topic / item | Decision / result | Status |
+|---|---|---|
+| Tube selection | Vortex-RC 3K roll-wrapped carbon-fibre tube, `40 mm OD x 36 mm ID x 1000 mm`, selected for both L1 and L2. | User selected |
+| Tube mass basis | The supplier listing's `1.100 kg` field is conservatively used as `1.100 kg/m` until the delivered tube is weighed. This gives 308 g L1 / 286 g L2 bare cut masses. | Applied; validate at receipt |
+| Link model masses | Including insert/local-protection allowances: L1 = 410 g; L2 = 390 g. | Applied |
+| J1/J3/J4/J5 motor | Linked Rtelligent 42AM08 NEMA 17. The URL names 0.71 N.m while the current manufacturer sheet quotes 0.80 N.m typical; calculations use the lower `0.71 N.m`. | Conservative applied |
+| J2 motor | Linked StepperOnline `23HS45-3504S` NEMA 23: `3.0 N.m`, `1.60 kg`, `3.5 A/phase`. | Applied |
+| Encoder mass | No external encoder mass included. The selected product listings do not prove an internal encoder; confirm SKU before closed-loop controls are assumed. | Validation required |
+| Updated capacities | J1/J2/J3/J4/J5 = `2.17 / 38.88 / 15.88 / 2.24 / 0.51 N.m`. | Recalculated |
+| Updated gearbox ranges | J1 `10-15:1`; J2 `50-60:1`; J3 `50-60:1`; J4 `10-15:1`; J5 `5-10:1`. | Current provisional |
+| Detailed record | `analysis_artifacts/Selected_products_recalculation.md`. | Complete |

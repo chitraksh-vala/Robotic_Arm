@@ -1,0 +1,50 @@
+{
+  "camera": {
+    "source": "1"
+  },
+  "workspace": {
+    "world_corners_mm": [
+      [
+        100.0,
+        -150.0
+      ],
+      [
+        450.0,
+        -150.0
+      ],
+      [
+        450.0,
+        150.0
+      ],
+      [
+        100.0,
+        150.0
+      ]
+    ],
+    "image_corners_px": [
+      [
+        164,
+        464
+      ],
+      [
+        584,
+        461
+      ],
+      [
+        595,
+        20
+      ],
+      [
+        157,
+        27
+      ]
+    ],
+    "pick_z_mm": 0.0
+  },
+  "detection": {
+    "lab_threshold": 28,
+    "min_area_px": 600,
+    "open_kernel_px": 3,
+    "close_kernel_px": 7
+  }
+}

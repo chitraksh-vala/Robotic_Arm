@@ -6,11 +6,17 @@ $L2 = 0.260
 $H = 0.180
 $Lt = 0.100
 
+# J2 uses StepperOnline 23HS45-3504S NEMA 23.  Its rotor/body is centred
+# around the J2 axis for pitch, but its centre is offset from J1 yaw by half
+# the motor body length.  It therefore affects J1 yaw acceleration only.
+$j2Nema23Mass_kg = 1.600
+$j2Nema23YawRadius_m = 0.0565
+
 $mass = [ordered]@{
-    UpperLink = 0.300
+    UpperLink = 0.210
     UpperCable = 0.075
-    J3Assembly = 1.260
-    ForearmLink = 0.280
+    J3Assembly = 1.160
+    ForearmLink = 0.200
     ForearmCable = 0.075
     WristAssembly = 0.300
     ToolAssembly = 0.500
@@ -144,6 +150,8 @@ $iJ3 = (
     $mass.Payload * [Math]::Pow($L2 + $Lt, 2)
 )
 
+$iJ1 = $iJ2 + $j2Nema23Mass_kg * [Math]::Pow($j2Nema23YawRadius_m, 2)
+
 $iJ4 = $mass.ToolAssembly * 0.050 * 0.050 + $mass.Payload * $Lt * $Lt
 $alphaLower = 60.0 * [Math]::PI / 180.0
 $alphaWrist = 120.0 * [Math]::PI / 180.0
@@ -154,7 +162,7 @@ $jointRows = @(
     [pscustomobject]@{
         Joint = 'J1'
         Static_Nm = 0.0
-        Acceleration_Nm = $iJ2 * $alphaLower
+        Acceleration_Nm = $iJ1 * $alphaLower
         Friction_Nm = 0.20
     },
     [pscustomobject]@{
@@ -217,6 +225,12 @@ $summary = [pscustomobject]@{
     Model_status = 'Preliminary CAD-independent estimate'
     Distal_moving_mass_kg = [Math]::Round(($mass.Values | Measure-Object -Sum).Sum, 3)
     Mass_model_kg = $mass
+    J2_motor_for_J1_yaw = [pscustomobject]@{
+        Model = 'StepperOnline 23HS45-3504S NEMA 23'
+        Mass_kg = $j2Nema23Mass_kg
+        Yaw_radius_m = $j2Nema23YawRadius_m
+        Inclusion = 'Included in J1 yaw inertia only; its mass is not distal to the J2 pitch axis.'
+    }
     Full_horizontal_static_torque_Nm = $straightStatic
     Sizing = $sizing
     Screening_ratio_assumptions = [pscustomobject]@{

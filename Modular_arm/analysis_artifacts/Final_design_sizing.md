@@ -1,6 +1,8 @@
 # Final Design Sizing Calculations
 
-Status: provisional design package for the current gearbox-only J2 version.
+> Superseded for the selected products by [`Selected_products_recalculation.md`](Selected_products_recalculation.md) (2026-10-14). Retained as historical work.
+
+Status: superseded for current design by [`Carbon_fiber_40x36_recalculation.md`](Carbon_fiber_40x36_recalculation.md). This record preserves the earlier aluminium-link structural pass.
 
 ## 1. Final baseline selected
 
@@ -12,7 +14,7 @@ Status: provisional design package for the current gearbox-only J2 version.
 | Tool offset, Lt | `100 mm` | Selected |
 | Payload object | `0.750 kg` | Confirmed |
 | Gripper/interface mass | `0.500 kg` | Provisional |
-| Distal moving mass carried by J2 | `3.540 kg` | Preliminary |
+| Distal moving mass carried by J2 | `3.440 kg` | Preliminary |
 | J2 counterbalance | `0 N.m` | Not used in current selected version |
 
 ## 2. Selected drivetrain check
@@ -31,8 +33,8 @@ The stepper checks use the approximate `42AM08` torque-speed curve supplied by t
 
 | Joint | Ratio | Required output torque | Target speed | Motor speed | Required motor torque | Curve available motor torque | Estimated available output torque | Margin | Status |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| J1 | `10:1` | `1.452 N.m` | `30 deg/s` | `50 rpm` | `0.194 N.m` | `0.780 N.m` | `5.850 N.m` | `4.03x` | Pass |
-| J2 | `100:1` | `25.117 N.m` | `30 deg/s` | `500 rpm` | `0.335 N.m` | `0.530 N.m` | `39.750 N.m` | `1.58x` | Pass |
+| J1 | `10:1` | `1.440 N.m` | `30 deg/s` | `50 rpm` | `0.192 N.m` | `0.780 N.m` | `5.850 N.m` | `4.06x` | Pass |
+| J2 | `100:1` | `24.653 N.m` | `30 deg/s` | `500 rpm` | `0.329 N.m` | `0.530 N.m` | `39.750 N.m` | `1.61x` | Pass |
 | J3 | `40:1` | `9.115 N.m` | `30 deg/s` | `200 rpm` | `0.304 N.m` | `0.700 N.m` | `21.000 N.m` | `2.30x` | Pass |
 
 Formula:
@@ -76,7 +78,7 @@ Material assumption: 6061-T6 aluminium, `E = 69 GPa`, density `2700 kg/m^3`.
 
 | Link | Selected section | Length | Tube-only mass | Design mass | Bending inertia | Tip force used | Estimated deflection | Estimated stress | Status |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---|
-| L1 upper arm | `40x30x2.5 mm` rectangular tube, tall side vertical | `280 mm` | `0.246 kg` | `0.300 kg` | `70677 mm^4` | `29.1 N` | `0.047 mm` | `2.46 MPa` | Pass |
+| L1 upper arm | `40x30x2.5 mm` rectangular tube, tall side vertical | `280 mm` | `0.246 kg` | `0.300 kg` | `70677 mm^4` | `30.1 N` | `0.045 mm` | `2.38 MPa` | Pass |
 | L2 forearm | `35x25x2.0 mm` rectangular tube, tall side vertical | `260 mm` | `0.157 kg` | `0.280 kg` | `37162 mm^4` | `15.2 N` | `0.035 mm` | `1.86 MPa` | Pass |
 
 Formula:
@@ -96,7 +98,7 @@ These values are low because the straight tubes are not the weak point. The real
 | TCP accuracy | `5 mm / 640 mm = 0.0078125 rad = 0.447 deg` | Keep total loaded angular error under about `0.45 deg`. |
 | TCP repeatability | `3 mm / 640 mm = 0.0046875 rad = 0.269 deg` | Keep repeatable loaded angular error under about `0.27 deg`. |
 | Gearbox backlash | J2 and J3 errors both move the TCP significantly. | Prefer `<=0.15 deg` output backlash per loaded gearbox, absolute maximum `<=0.30 deg`. |
-| Microstep output | J2: `360/(1600*100) = 0.00225 deg`. | Resolution is far smaller than the accuracy target. Backlash/compliance dominate. |
+| Microstep output | J2: `360/(1600*100) = 0.00225 deg`. | Resolution is far smaller than the accuracy target. Backlash, open-loop step loss and compliance dominate. |
 
 ## 7. Mechanical gripper sizing
 

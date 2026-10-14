@@ -17,9 +17,11 @@ Status: **Confirmed** = selected requirement; **Provisional** = current design t
 
 | Topic / item | Plan / execution description | Status |
 |---|---|---|
-| J1-J3 | Each joint uses one Rtelligent 42AM08 NEMA 17 stepper, RMCS-1120 drive, external gearbox and Omron incremental encoder. Use 0.80 N.m as the stepper holding torque. | Confirmed |
-| J4-J5 | One Waveshare ST3215 serial bus servo per joint. | Confirmed |
-| G1 | Use the third Waveshare ST3215 for the mechanical gripper. | Confirmed |
+| J1 / J3 / J4 / J5 | Each uses one Rtelligent 42AM08 NEMA 17 stepper, its appropriate driver and an external gearbox. No external encoder is used. Use 0.71 N.m for conservative sizing (manufacturer data shows 0.80 N.m typical; confirm purchased SKU). | Confirmed |
+| J2 | Use StepperOnline 23HS45-3504S NEMA 23, `3.0 N.m` holding torque, `3.5 A/phase`, with an external gearbox and a separate driver rated for at least `3.5 A/phase`. | Selected provisional |
+| Position reference | J1-J3 operate open-loop and require repeatable homing/limit references plus missed-step validation. | Required |
+| J4-J5 | Replace the two ST3215 serial servos with one Rtelligent 42AM08 NEMA 17 stepper plus gearbox per joint. | User directed |
+| G1 | Retain the third Waveshare ST3215 for the mechanical gripper. | Confirmed |
 | Power | 24 V for the stepper/drive subsystem; 12 V for ST3215 servos and pneumatic hardware. | Confirmed |
 | Pneumatic placement | Keep the pump and regulator off-arm wherever practical; move only lightweight tubing, valve/control hardware and the soft tool. | Confirmed approach |
 
@@ -31,8 +33,8 @@ Status: **Confirmed** = selected requirement; **Provisional** = current design t
 | Upper-arm length, L1 | 280 mm from J2 to J3. | Provisional |
 | Forearm length, L2 | 260 mm from J3 to J4. | Provisional |
 | Tool offset, Lt | 100 mm from the J5 wrist centre to the TCP. | Confirmed |
-| Link-length torque sweep | Current baseline remains L1 = 280 mm, L2 = 260 mm. Best redistribution trial is L1 = 250 mm, L2 = 290 mm; it reduces the J2/J3 capacity ratio from 2.76 to 2.42 while keeping required critical poses valid. | Calculation complete; not adopted |
-| J2 torque reduction direction | Link split alone reduces J2 capacity only about 2.5 percent. A 5-8 N.m shoulder counterbalance is the strongest current option, reducing J2 target from 25.12 N.m to about 16.91-11.98 N.m in the preliminary model. | Recommended |
+| Link-length torque sweep | Current baseline remains L1 = 280 mm, L2 = 260 mm. Best redistribution trial is L1 = 250 mm, L2 = 290 mm; it reduces the J2/J3 capacity ratio from 2.70 to 2.38 while keeping required critical poses valid. | Calculation complete; not adopted |
+| J2 torque reduction direction | Link split alone reduces J2 capacity about 2.4 percent. A 5-8 N.m shoulder counterbalance would reduce J2 target from 24.65 N.m to about 16.45-11.52 N.m in the preliminary model. | Reference; no counterbalance selected |
 | Final geometry for CAD pass | Use H = 180 mm, L1 = 280 mm, L2 = 260 mm, Lt = 100 mm for the first CAD skeleton. | Selected provisional |
 | Radial requirement | TCP working radius from 200 to 600 mm. The 600 mm boundary uses a horizontal-forward tool at provisional Z = 180 mm. | Confirmed orientation; height provisional |
 | Vertical requirement | TCP height from Z = 0 to 650 mm. The 650 mm boundary is CP3 rather than a requirement for every radius/orientation. | Confirmed boundary |
@@ -75,34 +77,38 @@ Status: **Confirmed** = selected requirement; **Provisional** = current design t
 |---|---|---|
 | Object payload | 750 g, excluding the gripper and modular interface. | Confirmed |
 | End-effector mass | Use 500 g provisionally for gripper plus interface. Initial total tool-end sizing load: 1.25 kg. | Provisional |
-| Upper-arm link mass | Use 300 g provisionally for the L1 structural link, excluding the J3 motor/gearbox/encoder assembly. | Provisional |
-| Forearm link mass | Use 280 g provisionally for the L2 structural link, excluding the wrist servo assembly. | Provisional |
+| Upper-arm link mass | Vortex-RC listed mass is treated conservatively as 1.100 kg/m: L1 tube cut mass 308 g; model uses 410 g including 102 g insert/protection reserve. | Current provisional; weigh delivered tube |
+| Forearm link mass | Vortex-RC listed mass is treated conservatively as 1.100 kg/m: L2 tube cut mass 286 g; model uses 390 g including 104 g insert/protection reserve. | Current provisional; weigh delivered tube |
 | Cable/tubing allowance | Use 75 g provisionally on the upper arm and 75 g provisionally on the forearm. | Provisional |
 | Rtelligent 42AM08 motor mass | Use 510 g per motor for torque/moving-mass calculations. J1 and J2 motor masses are near the base/shoulder; the J3 motor is included as moving mass on the upper arm. | Source-backed |
-| Omron E6B2 encoder mass | Use 100 g per encoder for torque/moving-mass calculations. | Source-backed approximation |
+| External encoder mass | Use 0 g; external encoders are not included in the current design. | User-directed |
+| Encoder-removal mass effect | Removes about 0.30 kg of hardware overall; the torque model drops by 0.10 kg because only the former J3 encoder was a distal J2 load. | Applied |
 | ST3215 servo mass | Use 70 g per servo provisionally. J4 and J5 use two servos in the wrist; G1 uses the third servo in the gripper/tool assembly. | Provisional |
 | RMCS-1120 driver mass | Use 0 g moving-arm contribution because the drivers should be mounted off-arm. | Confirmed approach |
 | Assumed gearbox mass | Use 450 g provisionally for the moving J3 gearbox in the torque model. J1/J2 gearbox masses are not counted as distal moving masses for J2 gravity torque. | Provisional |
 | Brackets/bearings allowance | Use 200 g provisionally for the moving J3 joint brackets and bearings; wrist brackets/bearings are included in the 300 g wrist assembly. | Provisional |
-| J3 moving joint assembly | Use 1.26 kg provisionally for the J3 motor, encoder, assumed gearbox, brackets and bearings. | Provisional |
+| J3 moving joint assembly | Use 1.16 kg provisionally for the J3 motor, assumed gearbox, brackets and bearings. | Provisional |
 | Wrist moving assembly | Use 300 g provisionally for two ST3215 servos plus wrist brackets and bearings. | Provisional |
-| Total distal moving mass | Current torque model uses 3.54 kg carried by J2, including links, cables/tubing, J3 assembly, wrist assembly, tool assembly and payload. | Preliminary |
+| Total distal moving mass | Current local-wrist-stepper model uses 4.64 kg carried by J2, including links, cables/tubing, J3 assembly, J4/J5 stepper assemblies, tool assembly and payload. | Preliminary |
 | Torque model | Include payload, gripper/interface, wrist hardware, links, actuators, cables and tubing. Do not treat 0.80 N.m holding torque as dynamic torque. | Confirmed approach |
 | Accuracy and repeatability | Target +/-5 mm TCP accuracy and +/-3 mm repeatability after calibration. | Provisional |
 | Joint speed | Target at least 30 deg/s for J1-J3 and 60 deg/s for J4-J5. | Provisional |
 | Safety margins | Structural factor of safety 2.0; required continuous torque no more than 67 percent of available continuous output torque after efficiency. | Provisional |
 | Moving-arm mass | Target 10 kg or less, excluding base, supplies and off-arm pneumatic equipment. | Provisional |
-| Preliminary torque result | Current first-pass minimum output capacities: J1 = 1.45 N.m, J2 = 25.12 N.m, J3 = 9.12 N.m, J4 = 1.64 N.m, J5 = 0.51 N.m. | Preliminary |
+| Preliminary torque result | Current linked-product minimum output capacities: J1 = 2.17 N.m, J2 = 38.88 N.m, J3 = 15.88 N.m, J4 = 2.24 N.m, J5 = 0.51 N.m. | Preliminary |
 | Gearbox screening | Initial screen: J1 at least 10:1, J2 about 90:1 or higher from math-only sizing, J3 about 35:1 or higher. Final choice needs torque-speed curves and gearbox data. | Preliminary |
 | J2 gearbox sizing check | Without counterbalance, J2 should be screened around 100:1 to 120:1. With 5-8 N.m counterbalance, J2 can move toward roughly 50:1 to 80:1 depending on final torque-speed data. | Preliminary; validation required |
-| Selected gearbox-only drivetrain | For the current no-counterbalance design pass use J1 = 10:1, J2 = 100:1, J3 = 40:1. | Selected provisional |
-| Selected link tube concepts | Use L1 = 40 x 30 x 2.5 mm 6061-T6 rectangular tube and L2 = 35 x 25 x 2.0 mm 6061-T6 rectangular tube, both with tall side vertical. | Selected provisional |
+| Gearbox selection ranges | For the current no-counterbalance, local-wrist-stepper pass select J1 = 10-15:1, J2 = 50-60:1, J3 = 50-60:1, J4 = 10-15:1 and J5 = 5-10:1; final choice depends on real gearbox backlash, efficiency and bearing ratings. | Current provisional |
+| Selected link tube concept | Use the same `40 mm OD x 36 mm ID`, 3K roll-wrapped carbon-fibre twill tube for both L1 and L2. | Current provisional |
 | Gearbox backlash target | Prefer loaded output backlash <=0.15 degrees for J2/J3; absolute maximum target <=0.30 degrees. | Provisional |
 | Detailed torque file | Stored under [`analysis_artifacts/Torque_calculations.md`](analysis_artifacts/Torque_calculations.md). | Complete |
 | Link-length sweep file | Stored under [`analysis_artifacts/Link_length_torque_sweep.md`](analysis_artifacts/Link_length_torque_sweep.md). | Complete |
 | J2 reduction study file | Stored under [`analysis_artifacts/J2_torque_reduction_study.md`](analysis_artifacts/J2_torque_reduction_study.md). | Complete |
 | J2 gearbox sizing file | Stored under [`analysis_artifacts/J2_gearbox_sizing_check.md`](analysis_artifacts/J2_gearbox_sizing_check.md). | Complete |
 | Final design sizing file | Stored under [`analysis_artifacts/Final_design_sizing.md`](analysis_artifacts/Final_design_sizing.md). | Complete |
+| Current CF recalculation | Stored under [`analysis_artifacts/Carbon_fiber_40x36_recalculation.md`](analysis_artifacts/Carbon_fiber_40x36_recalculation.md). | Complete |
+| Current NEMA23 J2 recalculation | Stored under [`analysis_artifacts/NEMA23_J2_recalculation.md`](analysis_artifacts/NEMA23_J2_recalculation.md). | Complete |
+| Current selected-products recalculation | Stored under [`analysis_artifacts/Selected_products_recalculation.md`](analysis_artifacts/Selected_products_recalculation.md). | Complete |
 | Folder README | Stored in [`README.md`](README.md). | Complete |
 | Design log | Stored in [`Design_log.md`](Design_log.md). | Complete |
 | Final outputs | Stored in [`Final_outputs.md`](Final_outputs.md). | Complete |

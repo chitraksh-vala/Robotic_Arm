@@ -7,10 +7,10 @@
                            "Lt_mm":  100,
                            "Payload_kg":  0.75,
                            "ToolAssembly_kg":  0.5,
-                           "DistalMovingMassForJ2_kg":  3.54,
-                           "J1_required_Nm":  1.452,
-                           "J2_required_Nm":  25.117,
-                           "J3_required_Nm":  9.115,
+                           "DistalMovingMassForJ2_kg":  3.27,
+                           "J1_required_Nm":  1.414,
+                           "J2_required_Nm":  23.897,
+                           "J3_required_Nm":  8.945,
                            "J4_required_Nm":  1.638,
                            "J5_required_Nm":  0.506
                        },
@@ -24,14 +24,14 @@
                                      {
                                          "Joint":  "J1",
                                          "Selected_ratio":  "10:1",
-                                         "Required_output_Nm":  1.452,
+                                         "Required_output_Nm":  1.414,
                                          "Target_joint_speed_deg_s":  30,
                                          "Joint_speed_rpm":  5,
                                          "Motor_speed_rpm":  50,
-                                         "Required_motor_torque_Nm":  0.194,
+                                         "Required_motor_torque_Nm":  0.189,
                                          "Curve_available_motor_torque_Nm":  0.78,
                                          "Curve_available_output_torque_Nm":  5.85,
-                                         "Torque_margin":  4.03,
+                                         "Torque_margin":  4.14,
                                          "Ideal_microstep_output_deg":  0.0225,
                                          "Ideal_TCP_step_at_full_reach_mm":  0.2513,
                                          "Screen":  "Pass for concept"
@@ -39,14 +39,14 @@
                                      {
                                          "Joint":  "J2",
                                          "Selected_ratio":  "100:1",
-                                         "Required_output_Nm":  25.117,
+                                         "Required_output_Nm":  23.897,
                                          "Target_joint_speed_deg_s":  30,
                                          "Joint_speed_rpm":  5,
                                          "Motor_speed_rpm":  500,
-                                         "Required_motor_torque_Nm":  0.335,
+                                         "Required_motor_torque_Nm":  0.319,
                                          "Curve_available_motor_torque_Nm":  0.53,
                                          "Curve_available_output_torque_Nm":  39.75,
-                                         "Torque_margin":  1.58,
+                                         "Torque_margin":  1.66,
                                          "Ideal_microstep_output_deg":  0.00225,
                                          "Ideal_TCP_step_at_full_reach_mm":  0.0251,
                                          "Screen":  "Pass for concept"
@@ -54,14 +54,14 @@
                                      {
                                          "Joint":  "J3",
                                          "Selected_ratio":  "40:1",
-                                         "Required_output_Nm":  9.115,
+                                         "Required_output_Nm":  8.945,
                                          "Target_joint_speed_deg_s":  30,
                                          "Joint_speed_rpm":  5,
                                          "Motor_speed_rpm":  200,
-                                         "Required_motor_torque_Nm":  0.304,
+                                         "Required_motor_torque_Nm":  0.298,
                                          "Curve_available_motor_torque_Nm":  0.7,
                                          "Curve_available_output_torque_Nm":  21,
-                                         "Torque_margin":  2.3,
+                                         "Torque_margin":  2.35,
                                          "Ideal_microstep_output_deg":  0.00562,
                                          "Ideal_TCP_step_at_full_reach_mm":  0.0628,
                                          "Screen":  "Pass for concept"
@@ -132,29 +132,29 @@
     "Link_structural_check":  [
                                   {
                                       "Link":  "L1 upper arm",
-                                      "Selected_section":  "40x30x2.5 mm rectangular tube, tall side vertical",
+                                      "Selected_section":  "40 mm OD x 36 mm ID (2 mm wall) 3K roll-wrapped carbon-fibre twill tube",
                                       "Length_mm":  280,
-                                      "Area_mm2":  325,
-                                      "Tube_only_mass_kg":  0.246,
-                                      "Design_mass_with_attachments_kg":  0.3,
-                                      "I_bending_mm4":  70677,
-                                      "Tip_force_used_N":  31,
-                                      "End_deflection_mm":  0.047,
-                                      "Bending_stress_MPa":  2.46,
-                                      "Screen":  "Pass for concept; joint brackets need CAD/FEA"
+                                      "Area_mm2":  238.8,
+                                      "Tube_only_mass_kg":  0.107,
+                                      "Design_mass_with_attachments_kg":  0.21,
+                                      "I_bending_mm4":  43216,
+                                      "Tip_force_used_N":  29.3,
+                                      "End_deflection_mm":  0.077,
+                                      "Bending_stress_MPa":  3.79,
+                                      "Screen":  "Pass for concept; bonded inserts and joint brackets need CAD/FEA"
                                   },
                                   {
                                       "Link":  "L2 forearm",
-                                      "Selected_section":  "35x25x2 mm rectangular tube, tall side vertical",
+                                      "Selected_section":  "40 mm OD x 36 mm ID (2 mm wall) 3K roll-wrapped carbon-fibre twill tube",
                                       "Length_mm":  260,
-                                      "Area_mm2":  224,
-                                      "Tube_only_mass_kg":  0.157,
-                                      "Design_mass_with_attachments_kg":  0.28,
-                                      "I_bending_mm4":  37189,
+                                      "Area_mm2":  238.8,
+                                      "Tube_only_mass_kg":  0.099,
+                                      "Design_mass_with_attachments_kg":  0.2,
+                                      "I_bending_mm4":  43216,
                                       "Tip_force_used_N":  15.2,
-                                      "End_deflection_mm":  0.035,
-                                      "Bending_stress_MPa":  1.86,
-                                      "Screen":  "Pass for concept; joint brackets need CAD/FEA"
+                                      "End_deflection_mm":  0.032,
+                                      "Bending_stress_MPa":  1.83,
+                                      "Screen":  "Pass for concept; bonded inserts and joint brackets need CAD/FEA"
                                   }
                               ],
     "Accuracy_and_backlash_targets":  [
@@ -168,7 +168,7 @@
                                               "Topic":  "TCP repeatability target",
                                               "Value":  "+/-3 mm",
                                               "Calculation":  "At 640 mm reach this corresponds to about +/-0.269 deg repeatable angular error.",
-                                              "Decision":  "Backlash, encoder calibration and joint compliance dominate over microstep resolution."
+                                              "Decision":  "Backlash, open-loop step loss and joint compliance dominate over microstep resolution."
                                           }
                                       ],
     "Gripper_sizing":  [

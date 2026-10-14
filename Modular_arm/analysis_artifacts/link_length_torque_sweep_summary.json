@@ -7,73 +7,74 @@
                         "Link_and_cable_masses_scaled_with_length":  true,
                         "Fixed_payload_kg":  0.75,
                         "Fixed_tool_assembly_kg":  0.5,
-                        "Fixed_J3_assembly_kg":  1.26,
-                        "Fixed_wrist_assembly_kg":  0.3
+                        "Fixed_J3_assembly_kg":  1.16,
+                        "Fixed_wrist_assembly_kg":  0.3,
+                        "J2_motor_for_J1_yaw":  "StepperOnline 23HS45-3504S; 1.600 kg at 56.5 mm effective yaw radius."
                     },
     "Summary":  [
                     {
                         "Candidate":  "Current",
                         "L1_mm":  280,
                         "L2_mm":  260,
-                        "Distal_moving_mass_kg":  3.54,
-                        "J1_capacity_Nm":  1.452,
-                        "J2_capacity_Nm":  25.117,
-                        "J3_capacity_Nm":  9.115,
+                        "Distal_moving_mass_kg":  3.27,
+                        "J1_capacity_Nm":  1.422,
+                        "J2_capacity_Nm":  23.897,
+                        "J3_capacity_Nm":  8.945,
                         "J4_capacity_Nm":  1.638,
                         "J5_capacity_Nm":  0.506,
-                        "J2_to_J3_ratio":  2.76,
+                        "J2_to_J3_ratio":  2.67,
                         "All_required_poses_pass":  true
                     },
                     {
                         "Candidate":  "A",
                         "L1_mm":  260,
                         "L2_mm":  280,
-                        "Distal_moving_mass_kg":  3.541,
-                        "J1_capacity_Nm":  1.431,
-                        "J2_capacity_Nm":  24.692,
-                        "J3_capacity_Nm":  9.769,
+                        "Distal_moving_mass_kg":  3.271,
+                        "J1_capacity_Nm":  1.403,
+                        "J2_capacity_Nm":  23.507,
+                        "J3_capacity_Nm":  9.57,
                         "J4_capacity_Nm":  1.638,
                         "J5_capacity_Nm":  0.506,
-                        "J2_to_J3_ratio":  2.53,
+                        "J2_to_J3_ratio":  2.46,
                         "All_required_poses_pass":  true
                     },
                     {
                         "Candidate":  "B",
                         "L1_mm":  250,
                         "L2_mm":  290,
-                        "Distal_moving_mass_kg":  3.541,
-                        "J1_capacity_Nm":  1.421,
-                        "J2_capacity_Nm":  24.48,
-                        "J3_capacity_Nm":  10.1,
+                        "Distal_moving_mass_kg":  3.271,
+                        "J1_capacity_Nm":  1.394,
+                        "J2_capacity_Nm":  23.312,
+                        "J3_capacity_Nm":  9.887,
                         "J4_capacity_Nm":  1.638,
                         "J5_capacity_Nm":  0.506,
-                        "J2_to_J3_ratio":  2.42,
+                        "J2_to_J3_ratio":  2.36,
                         "All_required_poses_pass":  true
                     },
                     {
                         "Candidate":  "C",
                         "L1_mm":  240,
                         "L2_mm":  300,
-                        "Distal_moving_mass_kg":  3.541,
-                        "J1_capacity_Nm":  1.411,
-                        "J2_capacity_Nm":  24.268,
-                        "J3_capacity_Nm":  10.432,
+                        "Distal_moving_mass_kg":  3.272,
+                        "J1_capacity_Nm":  1.385,
+                        "J2_capacity_Nm":  23.119,
+                        "J3_capacity_Nm":  10.207,
                         "J4_capacity_Nm":  1.638,
                         "J5_capacity_Nm":  0.506,
-                        "J2_to_J3_ratio":  2.33,
+                        "J2_to_J3_ratio":  2.27,
                         "All_required_poses_pass":  true
                     },
                     {
                         "Candidate":  "D",
                         "L1_mm":  270,
                         "L2_mm":  270,
-                        "Distal_moving_mass_kg":  3.54,
-                        "J1_capacity_Nm":  1.441,
-                        "J2_capacity_Nm":  24.904,
-                        "J3_capacity_Nm":  9.441,
+                        "Distal_moving_mass_kg":  3.27,
+                        "J1_capacity_Nm":  1.413,
+                        "J2_capacity_Nm":  23.702,
+                        "J3_capacity_Nm":  9.257,
                         "J4_capacity_Nm":  1.638,
                         "J5_capacity_Nm":  0.506,
-                        "J2_to_J3_ratio":  2.64,
+                        "J2_to_J3_ratio":  2.56,
                         "All_required_poses_pass":  true
                     }
                 ],
@@ -83,35 +84,35 @@
                         "L1_mm":  280,
                         "L2_mm":  260,
                         "L1_plus_L2_plus_Lt_mm":  640,
-                        "Upper_link_mass_kg":  0.3,
-                        "Forearm_link_mass_kg":  0.28,
+                        "Upper_link_mass_kg":  0.21,
+                        "Forearm_link_mass_kg":  0.2,
                         "Upper_cable_mass_kg":  0.075,
                         "Forearm_cable_mass_kg":  0.075,
-                        "Distal_moving_mass_kg":  3.54,
+                        "Distal_moving_mass_kg":  3.27,
                         "Sizing":  [
                                        {
                                            "Joint":  "J1",
                                            "Static_Nm":  0,
-                                           "Acceleration_Nm":  0.773,
+                                           "Acceleration_Nm":  0.753,
                                            "Friction_allowance_Nm":  0.2,
-                                           "Preliminary_demand_Nm":  0.973,
-                                           "Minimum_output_capacity_Nm":  1.452
+                                           "Preliminary_demand_Nm":  0.953,
+                                           "Minimum_output_capacity_Nm":  1.422
                                        },
                                        {
                                            "Joint":  "J2",
-                                           "Static_Nm":  14.596,
-                                           "Acceleration_Nm":  0.773,
-                                           "Friction_allowance_Nm":  1.46,
-                                           "Preliminary_demand_Nm":  16.829,
-                                           "Minimum_output_capacity_Nm":  25.117
+                                           "Static_Nm":  13.876,
+                                           "Acceleration_Nm":  0.748,
+                                           "Friction_allowance_Nm":  1.388,
+                                           "Preliminary_demand_Nm":  16.011,
+                                           "Minimum_output_capacity_Nm":  23.897
                                        },
                                        {
                                            "Joint":  "J3",
-                                           "Static_Nm":  5.387,
-                                           "Acceleration_Nm":  0.181,
-                                           "Friction_allowance_Nm":  0.539,
-                                           "Preliminary_demand_Nm":  6.107,
-                                           "Minimum_output_capacity_Nm":  9.115
+                                           "Static_Nm":  5.285,
+                                           "Acceleration_Nm":  0.179,
+                                           "Friction_allowance_Nm":  0.529,
+                                           "Preliminary_demand_Nm":  5.993,
+                                           "Minimum_output_capacity_Nm":  8.945
                                        },
                                        {
                                            "Joint":  "J4",
@@ -145,8 +146,8 @@
                                                                          "J3_deg":  -40.69,
                                                                          "J4_deg":  -59.78,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.863,
-                                                                                                "J3_Nm":  3.807,
+                                                                                                "J2_Nm":  12.167,
+                                                                                                "J3_Nm":  3.719,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -158,8 +159,8 @@
                                                                          "J3_deg":  40.69,
                                                                          "J4_deg":  -102.04,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.39,
-                                                                                                "J3_Nm":  4.309,
+                                                                                                "J2_Nm":  11.748,
+                                                                                                "J3_Nm":  4.209,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -179,8 +180,8 @@
                                                                          "J3_deg":  -133.16,
                                                                          "J4_deg":  3.27,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  6.814,
-                                                                                                "J3_Nm":  0.251,
+                                                                                                "J2_Nm":  6.346,
+                                                                                                "J3_Nm":  0.246,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -192,8 +193,8 @@
                                                                          "J3_deg":  133.16,
                                                                          "J4_deg":  -139.67,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  3.895,
-                                                                                                "J3_Nm":  2.852,
+                                                                                                "J2_Nm":  3.759,
+                                                                                                "J3_Nm":  2.786,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -213,8 +214,8 @@
                                                                          "J3_deg":  -37.89,
                                                                          "J4_deg":  -47.27,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  4.746,
-                                                                                                "J3_Nm":  3.971,
+                                                                                                "J2_Nm":  4.625,
+                                                                                                "J3_Nm":  3.901,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -226,8 +227,8 @@
                                                                          "J3_deg":  37.89,
                                                                          "J4_deg":  -86.62,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  7.315,
-                                                                                                "J3_Nm":  1.24,
+                                                                                                "J2_Nm":  6.901,
+                                                                                                "J3_Nm":  1.234,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -247,8 +248,8 @@
                                                                          "J3_deg":  -44.42,
                                                                          "J4_deg":  23.07,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.612,
-                                                                                                "J3_Nm":  5.035,
+                                                                                                "J2_Nm":  12.942,
+                                                                                                "J3_Nm":  4.941,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -260,8 +261,8 @@
                                                                          "J3_deg":  44.42,
                                                                          "J4_deg":  -23.07,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.612,
-                                                                                                "J3_Nm":  5.035,
+                                                                                                "J2_Nm":  12.942,
+                                                                                                "J3_Nm":  4.941,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -275,35 +276,35 @@
                         "L1_mm":  260,
                         "L2_mm":  280,
                         "L1_plus_L2_plus_Lt_mm":  640,
-                        "Upper_link_mass_kg":  0.279,
-                        "Forearm_link_mass_kg":  0.302,
+                        "Upper_link_mass_kg":  0.195,
+                        "Forearm_link_mass_kg":  0.215,
                         "Upper_cable_mass_kg":  0.07,
                         "Forearm_cable_mass_kg":  0.081,
-                        "Distal_moving_mass_kg":  3.541,
+                        "Distal_moving_mass_kg":  3.271,
                         "Sizing":  [
                                        {
                                            "Joint":  "J1",
                                            "Static_Nm":  0,
-                                           "Acceleration_Nm":  0.759,
+                                           "Acceleration_Nm":  0.74,
                                            "Friction_allowance_Nm":  0.2,
-                                           "Preliminary_demand_Nm":  0.959,
-                                           "Minimum_output_capacity_Nm":  1.431
+                                           "Preliminary_demand_Nm":  0.94,
+                                           "Minimum_output_capacity_Nm":  1.403
                                        },
                                        {
                                            "Joint":  "J2",
-                                           "Static_Nm":  14.35,
-                                           "Acceleration_Nm":  0.759,
-                                           "Friction_allowance_Nm":  1.435,
-                                           "Preliminary_demand_Nm":  16.544,
-                                           "Minimum_output_capacity_Nm":  24.692
+                                           "Static_Nm":  13.65,
+                                           "Acceleration_Nm":  0.735,
+                                           "Friction_allowance_Nm":  1.365,
+                                           "Preliminary_demand_Nm":  15.75,
+                                           "Minimum_output_capacity_Nm":  23.507
                                        },
                                        {
                                            "Joint":  "J3",
-                                           "Static_Nm":  5.764,
-                                           "Acceleration_Nm":  0.205,
-                                           "Friction_allowance_Nm":  0.576,
-                                           "Preliminary_demand_Nm":  6.545,
-                                           "Minimum_output_capacity_Nm":  9.769
+                                           "Static_Nm":  5.645,
+                                           "Acceleration_Nm":  0.203,
+                                           "Friction_allowance_Nm":  0.564,
+                                           "Preliminary_demand_Nm":  6.412,
+                                           "Minimum_output_capacity_Nm":  9.57
                                        },
                                        {
                                            "Joint":  "J4",
@@ -337,8 +338,8 @@
                                                                          "J3_deg":  -40.69,
                                                                          "J4_deg":  -61.35,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.595,
-                                                                                                "J3_Nm":  4.197,
+                                                                                                "J2_Nm":  11.922,
+                                                                                                "J3_Nm":  4.093,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -350,8 +351,8 @@
                                                                          "J3_deg":  40.69,
                                                                          "J4_deg":  -100.47,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.122,
-                                                                                                "J3_Nm":  4.703,
+                                                                                                "J2_Nm":  11.504,
+                                                                                                "J3_Nm":  4.587,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -371,8 +372,8 @@
                                                                          "J3_deg":  -133.16,
                                                                          "J4_deg":  -6.5,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  6.099,
-                                                                                                "J3_Nm":  0.542,
+                                                                                                "J2_Nm":  5.709,
+                                                                                                "J3_Nm":  0.528,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -384,8 +385,8 @@
                                                                          "J3_deg":  133.16,
                                                                          "J4_deg":  -129.89,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  3.18,
-                                                                                                "J3_Nm":  3.669,
+                                                                                                "J2_Nm":  3.122,
+                                                                                                "J3_Nm":  3.579,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -405,8 +406,8 @@
                                                                          "J3_deg":  -37.89,
                                                                          "J4_deg":  -48.73,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  4.641,
-                                                                                                "J3_Nm":  4.136,
+                                                                                                "J2_Nm":  4.529,
+                                                                                                "J3_Nm":  4.058,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -418,8 +419,8 @@
                                                                          "J3_deg":  37.89,
                                                                          "J4_deg":  -85.17,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  7.21,
-                                                                                                "J3_Nm":  1.384,
+                                                                                                "J2_Nm":  6.805,
+                                                                                                "J3_Nm":  1.374,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -439,8 +440,8 @@
                                                                          "J3_deg":  -44.42,
                                                                          "J4_deg":  21.34,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.335,
-                                                                                                "J3_Nm":  5.436,
+                                                                                                "J2_Nm":  12.69,
+                                                                                                "J3_Nm":  5.325,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -452,8 +453,8 @@
                                                                          "J3_deg":  44.42,
                                                                          "J4_deg":  -21.34,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.335,
-                                                                                                "J3_Nm":  5.436,
+                                                                                                "J2_Nm":  12.69,
+                                                                                                "J3_Nm":  5.325,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -467,35 +468,35 @@
                         "L1_mm":  250,
                         "L2_mm":  290,
                         "L1_plus_L2_plus_Lt_mm":  640,
-                        "Upper_link_mass_kg":  0.268,
-                        "Forearm_link_mass_kg":  0.312,
+                        "Upper_link_mass_kg":  0.187,
+                        "Forearm_link_mass_kg":  0.223,
                         "Upper_cable_mass_kg":  0.067,
                         "Forearm_cable_mass_kg":  0.084,
-                        "Distal_moving_mass_kg":  3.541,
+                        "Distal_moving_mass_kg":  3.271,
                         "Sizing":  [
                                        {
                                            "Joint":  "J1",
                                            "Static_Nm":  0,
-                                           "Acceleration_Nm":  0.752,
+                                           "Acceleration_Nm":  0.734,
                                            "Friction_allowance_Nm":  0.2,
-                                           "Preliminary_demand_Nm":  0.952,
-                                           "Minimum_output_capacity_Nm":  1.421
+                                           "Preliminary_demand_Nm":  0.934,
+                                           "Minimum_output_capacity_Nm":  1.394
                                        },
                                        {
                                            "Joint":  "J2",
-                                           "Static_Nm":  14.227,
-                                           "Acceleration_Nm":  0.752,
-                                           "Friction_allowance_Nm":  1.423,
-                                           "Preliminary_demand_Nm":  16.402,
-                                           "Minimum_output_capacity_Nm":  24.48
+                                           "Static_Nm":  13.537,
+                                           "Acceleration_Nm":  0.728,
+                                           "Friction_allowance_Nm":  1.354,
+                                           "Preliminary_demand_Nm":  15.619,
+                                           "Minimum_output_capacity_Nm":  23.312
                                        },
                                        {
                                            "Joint":  "J3",
-                                           "Static_Nm":  5.954,
-                                           "Acceleration_Nm":  0.217,
-                                           "Friction_allowance_Nm":  0.595,
-                                           "Preliminary_demand_Nm":  6.767,
-                                           "Minimum_output_capacity_Nm":  10.1
+                                           "Static_Nm":  5.827,
+                                           "Acceleration_Nm":  0.215,
+                                           "Friction_allowance_Nm":  0.583,
+                                           "Preliminary_demand_Nm":  6.624,
+                                           "Minimum_output_capacity_Nm":  9.887
                                        },
                                        {
                                            "Joint":  "J4",
@@ -529,8 +530,8 @@
                                                                          "J3_deg":  -40.78,
                                                                          "J4_deg":  -62.1,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.46,
-                                                                                                "J3_Nm":  4.395,
+                                                                                                "J2_Nm":  11.799,
+                                                                                                "J3_Nm":  4.283,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -542,8 +543,8 @@
                                                                          "J3_deg":  40.78,
                                                                          "J4_deg":  -99.72,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  11.989,
-                                                                                                "J3_Nm":  4.901,
+                                                                                                "J2_Nm":  11.382,
+                                                                                                "J3_Nm":  4.776,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -563,8 +564,8 @@
                                                                          "J3_deg":  -133.71,
                                                                          "J4_deg":  -11.17,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  5.722,
-                                                                                                "J3_Nm":  0.964,
+                                                                                                "J2_Nm":  5.374,
+                                                                                                "J3_Nm":  0.939,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -576,8 +577,8 @@
                                                                          "J3_deg":  133.71,
                                                                          "J4_deg":  -125.22,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  2.841,
-                                                                                                "J3_Nm":  4.062,
+                                                                                                "J2_Nm":  2.82,
+                                                                                                "J3_Nm":  3.959,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -597,8 +598,8 @@
                                                                          "J3_deg":  -37.98,
                                                                          "J4_deg":  -49.42,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  4.592,
-                                                                                                "J3_Nm":  4.216,
+                                                                                                "J2_Nm":  4.483,
+                                                                                                "J3_Nm":  4.133,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -610,8 +611,8 @@
                                                                          "J3_deg":  37.98,
                                                                          "J4_deg":  -84.48,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  7.154,
-                                                                                                "J3_Nm":  1.46,
+                                                                                                "J2_Nm":  6.755,
+                                                                                                "J3_Nm":  1.447,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -631,8 +632,8 @@
                                                                          "J3_deg":  -44.51,
                                                                          "J4_deg":  20.52,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.197,
-                                                                                                "J3_Nm":  5.638,
+                                                                                                "J2_Nm":  12.564,
+                                                                                                "J3_Nm":  5.519,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -644,8 +645,8 @@
                                                                          "J3_deg":  44.51,
                                                                          "J4_deg":  -20.52,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.197,
-                                                                                                "J3_Nm":  5.638,
+                                                                                                "J2_Nm":  12.564,
+                                                                                                "J3_Nm":  5.519,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -659,35 +660,35 @@
                         "L1_mm":  240,
                         "L2_mm":  300,
                         "L1_plus_L2_plus_Lt_mm":  640,
-                        "Upper_link_mass_kg":  0.257,
-                        "Forearm_link_mass_kg":  0.323,
+                        "Upper_link_mass_kg":  0.18,
+                        "Forearm_link_mass_kg":  0.231,
                         "Upper_cable_mass_kg":  0.064,
                         "Forearm_cable_mass_kg":  0.087,
-                        "Distal_moving_mass_kg":  3.541,
+                        "Distal_moving_mass_kg":  3.272,
                         "Sizing":  [
                                        {
                                            "Joint":  "J1",
                                            "Static_Nm":  0,
-                                           "Acceleration_Nm":  0.745,
+                                           "Acceleration_Nm":  0.728,
                                            "Friction_allowance_Nm":  0.2,
-                                           "Preliminary_demand_Nm":  0.945,
-                                           "Minimum_output_capacity_Nm":  1.411
+                                           "Preliminary_demand_Nm":  0.928,
+                                           "Minimum_output_capacity_Nm":  1.385
                                        },
                                        {
                                            "Joint":  "J2",
-                                           "Static_Nm":  14.104,
-                                           "Acceleration_Nm":  0.745,
-                                           "Friction_allowance_Nm":  1.41,
-                                           "Preliminary_demand_Nm":  16.26,
-                                           "Minimum_output_capacity_Nm":  24.268
+                                           "Static_Nm":  13.425,
+                                           "Acceleration_Nm":  0.722,
+                                           "Friction_allowance_Nm":  1.343,
+                                           "Preliminary_demand_Nm":  15.49,
+                                           "Minimum_output_capacity_Nm":  23.119
                                        },
                                        {
                                            "Joint":  "J3",
-                                           "Static_Nm":  6.145,
-                                           "Acceleration_Nm":  0.23,
-                                           "Friction_allowance_Nm":  0.614,
-                                           "Preliminary_demand_Nm":  6.99,
-                                           "Minimum_output_capacity_Nm":  10.432
+                                           "Static_Nm":  6.01,
+                                           "Acceleration_Nm":  0.227,
+                                           "Friction_allowance_Nm":  0.601,
+                                           "Preliminary_demand_Nm":  6.838,
+                                           "Minimum_output_capacity_Nm":  10.207
                                        },
                                        {
                                            "Joint":  "J4",
@@ -721,8 +722,8 @@
                                                                          "J3_deg":  -40.93,
                                                                          "J4_deg":  -62.82,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.325,
-                                                                                                "J3_Nm":  4.594,
+                                                                                                "J2_Nm":  11.676,
+                                                                                                "J3_Nm":  4.473,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -734,8 +735,8 @@
                                                                          "J3_deg":  40.93,
                                                                          "J4_deg":  -99,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  11.855,
-                                                                                                "J3_Nm":  5.101,
+                                                                                                "J2_Nm":  11.26,
+                                                                                                "J3_Nm":  4.967,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -755,8 +756,8 @@
                                                                          "J3_deg":  -134.65,
                                                                          "J4_deg":  -15.77,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  5.332,
-                                                                                                "J3_Nm":  1.403,
+                                                                                                "J2_Nm":  5.027,
+                                                                                                "J3_Nm":  1.366,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -768,8 +769,8 @@
                                                                          "J3_deg":  134.65,
                                                                          "J4_deg":  -120.63,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  2.516,
-                                                                                                "J3_Nm":  4.444,
+                                                                                                "J2_Nm":  2.531,
+                                                                                                "J3_Nm":  4.327,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -789,8 +790,8 @@
                                                                          "J3_deg":  -38.11,
                                                                          "J4_deg":  -50.09,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  4.544,
-                                                                                                "J3_Nm":  4.294,
+                                                                                                "J2_Nm":  4.44,
+                                                                                                "J3_Nm":  4.207,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -802,8 +803,8 @@
                                                                          "J3_deg":  38.11,
                                                                          "J4_deg":  -83.81,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  7.097,
-                                                                                                "J3_Nm":  1.538,
+                                                                                                "J2_Nm":  6.703,
+                                                                                                "J3_Nm":  1.523,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -823,8 +824,8 @@
                                                                          "J3_deg":  -44.67,
                                                                          "J4_deg":  19.72,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.058,
-                                                                                                "J3_Nm":  5.842,
+                                                                                                "J2_Nm":  12.438,
+                                                                                                "J3_Nm":  5.715,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -836,8 +837,8 @@
                                                                          "J3_deg":  44.67,
                                                                          "J4_deg":  -19.72,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.058,
-                                                                                                "J3_Nm":  5.842,
+                                                                                                "J2_Nm":  12.438,
+                                                                                                "J3_Nm":  5.715,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -851,35 +852,35 @@
                         "L1_mm":  270,
                         "L2_mm":  270,
                         "L1_plus_L2_plus_Lt_mm":  640,
-                        "Upper_link_mass_kg":  0.289,
-                        "Forearm_link_mass_kg":  0.291,
+                        "Upper_link_mass_kg":  0.202,
+                        "Forearm_link_mass_kg":  0.208,
                         "Upper_cable_mass_kg":  0.072,
                         "Forearm_cable_mass_kg":  0.078,
-                        "Distal_moving_mass_kg":  3.54,
+                        "Distal_moving_mass_kg":  3.27,
                         "Sizing":  [
                                        {
                                            "Joint":  "J1",
                                            "Static_Nm":  0,
-                                           "Acceleration_Nm":  0.766,
+                                           "Acceleration_Nm":  0.746,
                                            "Friction_allowance_Nm":  0.2,
-                                           "Preliminary_demand_Nm":  0.966,
-                                           "Minimum_output_capacity_Nm":  1.441
+                                           "Preliminary_demand_Nm":  0.946,
+                                           "Minimum_output_capacity_Nm":  1.413
                                        },
                                        {
                                            "Joint":  "J2",
-                                           "Static_Nm":  14.473,
-                                           "Acceleration_Nm":  0.766,
-                                           "Friction_allowance_Nm":  1.447,
-                                           "Preliminary_demand_Nm":  16.686,
-                                           "Minimum_output_capacity_Nm":  24.904
+                                           "Static_Nm":  13.763,
+                                           "Acceleration_Nm":  0.741,
+                                           "Friction_allowance_Nm":  1.376,
+                                           "Preliminary_demand_Nm":  15.88,
+                                           "Minimum_output_capacity_Nm":  23.702
                                        },
                                        {
                                            "Joint":  "J3",
-                                           "Static_Nm":  5.575,
-                                           "Acceleration_Nm":  0.193,
-                                           "Friction_allowance_Nm":  0.558,
-                                           "Preliminary_demand_Nm":  6.325,
-                                           "Minimum_output_capacity_Nm":  9.441
+                                           "Static_Nm":  5.465,
+                                           "Acceleration_Nm":  0.191,
+                                           "Friction_allowance_Nm":  0.546,
+                                           "Preliminary_demand_Nm":  6.202,
+                                           "Minimum_output_capacity_Nm":  9.257
                                        },
                                        {
                                            "Joint":  "J4",
@@ -913,8 +914,8 @@
                                                                          "J3_deg":  -40.66,
                                                                          "J4_deg":  -60.58,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.729,
-                                                                                                "J3_Nm":  4.001,
+                                                                                                "J2_Nm":  12.045,
+                                                                                                "J3_Nm":  3.905,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -926,8 +927,8 @@
                                                                          "J3_deg":  40.66,
                                                                          "J4_deg":  -101.24,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  12.256,
-                                                                                                "J3_Nm":  4.506,
+                                                                                                "J2_Nm":  11.626,
+                                                                                                "J3_Nm":  4.398,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -947,8 +948,8 @@
                                                                          "J3_deg":  -132.98,
                                                                          "J4_deg":  -1.71,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  6.463,
-                                                                                                "J3_Nm":  0.137,
+                                                                                                "J2_Nm":  6.033,
+                                                                                                "J3_Nm":  0.134,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      },
@@ -960,8 +961,8 @@
                                                                          "J3_deg":  132.98,
                                                                          "J4_deg":  -134.69,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  3.531,
-                                                                                                "J3_Nm":  3.266,
+                                                                                                "J2_Nm":  3.435,
+                                                                                                "J3_Nm":  3.188,
                                                                                                 "J4_Nm":  0
                                                                                             }
                                                                      }
@@ -981,8 +982,8 @@
                                                                          "J3_deg":  -37.87,
                                                                          "J4_deg":  -48.02,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  4.693,
-                                                                                                "J3_Nm":  4.054,
+                                                                                                "J2_Nm":  4.576,
+                                                                                                "J3_Nm":  3.98,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -994,8 +995,8 @@
                                                                          "J3_deg":  37.87,
                                                                          "J4_deg":  -85.88,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  7.263,
-                                                                                                "J3_Nm":  1.311,
+                                                                                                "J2_Nm":  6.854,
+                                                                                                "J3_Nm":  1.303,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }
@@ -1015,8 +1016,8 @@
                                                                          "J3_deg":  -44.38,
                                                                          "J4_deg":  22.19,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.474,
-                                                                                                "J3_Nm":  5.234,
+                                                                                                "J2_Nm":  12.816,
+                                                                                                "J3_Nm":  5.133,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      },
@@ -1028,8 +1029,8 @@
                                                                          "J3_deg":  44.38,
                                                                          "J4_deg":  -22.19,
                                                                          "Gravity_torque":  {
-                                                                                                "J2_Nm":  13.474,
-                                                                                                "J3_Nm":  5.234,
+                                                                                                "J2_Nm":  12.816,
+                                                                                                "J3_Nm":  5.133,
                                                                                                 "J4_Nm":  0.981
                                                                                             }
                                                                      }

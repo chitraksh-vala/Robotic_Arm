@@ -25,10 +25,10 @@ $poses = @(
 $baseline = [ordered]@{
     L1 = 0.280
     L2 = 0.260
-    UpperLink = 0.300
+    UpperLink = 0.210
     UpperCable = 0.075
-    J3Assembly = 1.260
-    ForearmLink = 0.280
+    J3Assembly = 1.160
+    ForearmLink = 0.200
     ForearmCable = 0.075
     WristAssembly = 0.300
     ToolAssembly = 0.500
@@ -38,15 +38,15 @@ $baseline = [ordered]@{
 
 $scenarios = @(
     [pscustomobject]@{ Name = 'Baseline'; Description = 'Current provisional model.'; Changes = @{} },
-    [pscustomobject]@{ Name = 'Link split B'; Description = 'Use L1 = 250 mm and L2 = 290 mm while keeping total reach constant.'; Changes = @{ L1 = 0.250; L2 = 0.290; UpperLink = 0.300 * (0.250 / 0.280); UpperCable = 0.075 * (0.250 / 0.280); ForearmLink = 0.280 * (0.290 / 0.260); ForearmCable = 0.075 * (0.290 / 0.260) } },
+    [pscustomobject]@{ Name = 'Link split B'; Description = 'Use L1 = 250 mm and L2 = 290 mm while keeping total reach constant.'; Changes = @{ L1 = 0.250; L2 = 0.290; UpperLink = 0.210 * (0.250 / 0.280); UpperCable = 0.075 * (0.250 / 0.280); ForearmLink = 0.200 * (0.290 / 0.260); ForearmCable = 0.075 * (0.290 / 0.260) } },
     [pscustomobject]@{ Name = 'Light tool'; Description = 'Reduce gripper/interface mass from 500 g to 350 g.'; Changes = @{ ToolAssembly = 0.350 } },
     [pscustomobject]@{ Name = 'Very light tool'; Description = 'Reduce gripper/interface mass from 500 g to 250 g.'; Changes = @{ ToolAssembly = 0.250 } },
-    [pscustomobject]@{ Name = 'Light J3 assembly'; Description = 'Reduce moving J3 motor/gearbox/bracket assembly from 1.26 kg to 1.00 kg.'; Changes = @{ J3Assembly = 1.000 } },
+    [pscustomobject]@{ Name = 'Light J3 assembly'; Description = 'Further reduce moving J3 motor/gearbox/bracket assembly from 1.16 kg to 1.00 kg.'; Changes = @{ J3Assembly = 1.000 } },
     [pscustomobject]@{ Name = 'Light wrist'; Description = 'Reduce wrist assembly from 300 g to 220 g.'; Changes = @{ WristAssembly = 0.220 } },
-    [pscustomobject]@{ Name = 'Mass optimization combo'; Description = 'L1/L2 = 250/290, J3 assembly = 1.00 kg, wrist = 220 g, tool = 350 g.'; Changes = @{ L1 = 0.250; L2 = 0.290; UpperLink = 0.300 * (0.250 / 0.280); UpperCable = 0.075 * (0.250 / 0.280); ForearmLink = 0.280 * (0.290 / 0.260); ForearmCable = 0.075 * (0.290 / 0.260); J3Assembly = 1.000; WristAssembly = 0.220; ToolAssembly = 0.350 } },
+    [pscustomobject]@{ Name = 'Mass optimization combo'; Description = 'L1/L2 = 250/290, J3 assembly = 1.00 kg, wrist = 220 g, tool = 350 g.'; Changes = @{ L1 = 0.250; L2 = 0.290; UpperLink = 0.210 * (0.250 / 0.280); UpperCable = 0.075 * (0.250 / 0.280); ForearmLink = 0.200 * (0.290 / 0.260); ForearmCable = 0.075 * (0.290 / 0.260); J3Assembly = 1.000; WristAssembly = 0.220; ToolAssembly = 0.350 } },
     [pscustomobject]@{ Name = 'Counterbalance 5 Nm'; Description = 'Add shoulder counterbalance giving about 5 N.m near horizontal.'; Changes = @{ Counterbalance_Nm = 5.000 } },
     [pscustomobject]@{ Name = 'Counterbalance 8 Nm'; Description = 'Add shoulder counterbalance giving about 8 N.m near horizontal.'; Changes = @{ Counterbalance_Nm = 8.000 } },
-    [pscustomobject]@{ Name = 'Mass combo + 5 Nm counterbalance'; Description = 'Mass optimization combo plus a 5 N.m shoulder counterbalance.'; Changes = @{ L1 = 0.250; L2 = 0.290; UpperLink = 0.300 * (0.250 / 0.280); UpperCable = 0.075 * (0.250 / 0.280); ForearmLink = 0.280 * (0.290 / 0.260); ForearmCable = 0.075 * (0.290 / 0.260); J3Assembly = 1.000; WristAssembly = 0.220; ToolAssembly = 0.350; Counterbalance_Nm = 5.000 } }
+    [pscustomobject]@{ Name = 'Mass combo + 5 Nm counterbalance'; Description = 'Mass optimization combo plus a 5 N.m shoulder counterbalance.'; Changes = @{ L1 = 0.250; L2 = 0.290; UpperLink = 0.210 * (0.250 / 0.280); UpperCable = 0.075 * (0.250 / 0.280); ForearmLink = 0.200 * (0.290 / 0.260); ForearmCable = 0.075 * (0.290 / 0.260); J3Assembly = 1.000; WristAssembly = 0.220; ToolAssembly = 0.350; Counterbalance_Nm = 5.000 } }
 )
 
 function Copy-ScenarioModel {

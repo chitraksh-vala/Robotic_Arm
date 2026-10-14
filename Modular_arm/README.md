@@ -17,11 +17,10 @@ The current design is a concept-ready baseline for CAD. It is not a manufacturin
 | Payload | `750 g` object-only | Confirmed |
 | Tool/gripper/interface mass | `500 g` | Provisional |
 | J1 gearbox | `10:1` | Provisional |
-| J2 gearbox | `100:1` | Provisional, critical |
-| J3 gearbox | `40:1` | Provisional |
+| J2 gearbox | `50-60:1` | Provisional, critical |
+| J3 gearbox | `50-60:1` | Provisional |
 | Counterbalance | Not used in current selected version | User-directed |
-| L1 tube concept | `40 x 30 x 2.5 mm` 6061-T6 aluminium rectangular tube | Provisional |
-| L2 tube concept | `35 x 25 x 2.0 mm` 6061-T6 aluminium rectangular tube | Provisional |
+| L1/L2 tube concept | Vortex-RC `40 mm OD x 36 mm ID` 3K roll-wrapped carbon-fibre tube | Current provisional |
 
 ## Where To Start
 
@@ -34,6 +33,7 @@ Read these files in this order:
 | [`Workspace_constraints`](Workspace_constraints) | Essential requirements, constraints, selected values, and validation status. |
 | [`Kinematic_calculations.md`](Kinematic_calculations.md) | DH model, forward kinematics, inverse kinematics, critical poses, and workspace map results. |
 | [`analysis_artifacts/Final_design_sizing.md`](analysis_artifacts/Final_design_sizing.md) | Final drivetrain, structure, gripper, backlash, and interface calculations. |
+| [`analysis_artifacts/Selected_products_recalculation.md`](analysis_artifacts/Selected_products_recalculation.md) | Current authoritative linked-product torque, mass and gearbox calculation. |
 
 ## Folder Map
 
@@ -64,13 +64,13 @@ The workspace maps are kinematic maps. They do not yet include physical link thi
 
 | Joint | Required minimum output capacity | Current selection |
 |---|---:|---|
-| J1 base yaw | `1.45 N.m` | 42AM08 + `10:1` gearbox |
-| J2 shoulder pitch | `25.12 N.m` | 42AM08 + `100:1` gearbox |
-| J3 elbow pitch | `9.12 N.m` | 42AM08 + `40:1` gearbox |
-| J4 wrist pitch | `1.64 N.m` | ST3215, thermal validation required |
-| J5 wrist roll | `0.51 N.m` | ST3215 |
+| J1 base yaw | `2.17 N.m` | 42AM08 + `10-15:1` gearbox |
+| J2 shoulder pitch | `38.88 N.m` | 23HS45-3504S NEMA 23 + `50-60:1` gearbox |
+| J3 elbow pitch | `15.88 N.m` | 42AM08 + `50-60:1` gearbox |
+| J4 wrist pitch | `2.24 N.m` | 42AM08 + `10-15:1` gearbox |
+| J5 wrist roll | `0.51 N.m` | 42AM08 + `5-10:1` gearbox |
 
-The J2 `100:1` gearbox choice is based on the current no-counterbalance design. At the target J2 speed of `30 deg/s`, the motor needs to run at about `500 rpm`. Using the supplied 42AM08 torque-speed curve, the concept margin is about `1.58x`.
+The NEMA 23 J2 gearbox range is `50-60:1` because the wrist steppers add mass. At `30 deg/s`, it runs at `250-300 rpm`; the conservative linked-product screening margin is `1.45-1.74x`. The selected J2 driver must support `3.5 A/phase`.
 
 ## Important Design Decisions
 
@@ -79,7 +79,8 @@ The J2 `100:1` gearbox choice is based on the current no-counterbalance design. 
 | Keep `L1 = 280 mm`, `L2 = 260 mm` for first CAD pass | It already passes the workspace and critical-pose checks. |
 | Do not adopt `L1 = 250 mm`, `L2 = 290 mm` yet | It improves torque distribution, but only slightly reduces J2 torque. |
 | Use gearbox-only J2 for current version | User chose to avoid counterbalance for now. |
-| Keep aluminium for main links | Aluminium tube gives stiffness and dimensional stability with low mass. PLA is better for mockups/covers/non-load-bearing parts. |
+| Do not use external encoders on J1-J3 | User-directed; their mass is excluded. Provide homing switches and validate missed-step behaviour. |
+| Use 40/36 mm CF tubes for both main links | Current requested design instance; insert design and supplier material data remain to be validated. |
 | Use pogo pins for electrical only | The tool interface must carry structure through mechanical datums and locks, not pogo contacts. |
 
 ## What Is Still Not Final
@@ -89,7 +90,7 @@ The J2 `100:1` gearbox choice is based on the current no-counterbalance design. 
 | Actual gearbox selection | Need real ratio, efficiency, backlash, output bearing rating, dimensions, mass, and price. |
 | CAD collision checks | Current maps are ideal kinematic checks only. |
 | CAD mass properties | Provisional masses must be replaced by measured CAD values. |
-| J4 continuous torque | ST3215 stall torque is not the same as continuous usable torque. |
+| Wrist actuator packaging | The local wrist-mounted NEMA 17 baseline adds substantial upstream torque; actual gearbox mass/layout must be validated in CAD. |
 | Pogo current rating | Servo current may require duplicated power/ground contacts or separate power contacts. |
 | Gripper linkage | Opening, finger geometry, force, and end stops still need actual CAD design. |
 
@@ -113,7 +114,7 @@ Choose actual gearboxes for:
 | Joint | Target ratio |
 |---|---:|
 | J1 | `10:1` |
-| J2 | `100:1` |
-| J3 | `40:1` |
+| J2 | `50-60:1` |
+| J3 | `50-60:1` |
 
 The gearbox comparison should include torque rating, efficiency, backlash, mass, dimensions, output bearing/load capacity, availability, and cost.

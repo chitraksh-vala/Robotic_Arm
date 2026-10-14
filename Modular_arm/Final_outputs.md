@@ -1,6 +1,6 @@
 # Final Outputs - Provisional Custom Modular Robotic Arm
 
-Status: provisional design output, ready for CAD concept modelling and gearbox procurement comparison. This is not a manufacturing release.
+Status: current provisional CF-link design output, ready for CAD concept modelling and gearbox procurement comparison. This is not a manufacturing release.
 
 ## 1. Final selected baseline
 
@@ -32,11 +32,11 @@ Status: provisional design output, ready for CAD concept modelling and gearbox p
 
 | Joint | Actuator | Ratio/output | Required capacity | Target speed | Result | Status |
 |---|---|---:|---:|---:|---|---|
-| J1 | Rtelligent 42AM08 + gearbox + encoder | `10:1` | `1.45 N.m` | `30 deg/s` | Comfortable margin. | Selected |
-| J2 | Rtelligent 42AM08 + gearbox + encoder | `100:1` | `25.12 N.m` | `30 deg/s` | Works with supplied curve; gearbox quality is critical. | Selected |
-| J3 | Rtelligent 42AM08 + gearbox + encoder | `40:1` | `9.12 N.m` | `30 deg/s` | Comfortable margin. | Selected |
-| J4 | ST3215 serial servo | Internal gearing | `1.64 N.m` | `60 deg/s` | Needs thermal/continuous torque validation. | Selected with risk |
-| J5 | ST3215 serial servo | Internal gearing | `0.51 N.m` | `60 deg/s` | Acceptable. | Selected |
+| J1 | Rtelligent 42AM08 + gearbox, no external encoder | `10-15:1` | `2.17 N.m` | `30 deg/s` | 2.39-3.54x margin using conservative 0.71 N.m basis. | Current provisional |
+| J2 | 23HS45-3504S NEMA 23 + gearbox, no external encoder | `50-60:1` | `38.88 N.m` | `30 deg/s` | Conservative 1.45-1.74x margin; requires >=3.5 A/phase driver. | Current provisional |
+| J3 | Rtelligent 42AM08 + gearbox, no external encoder | `50-60:1` | `15.88 N.m` | `30 deg/s` | 1.41-1.64x margin using conservative 0.71 N.m basis. | Current provisional |
+| J4 | Rtelligent 42AM08 + gearbox, no external encoder | `10-15:1` | `2.24 N.m` | `60 deg/s` | 2.26-3.26x margin using conservative 0.71 N.m basis. | Current provisional |
+| J5 | Rtelligent 42AM08 + gearbox, no external encoder | `5-10:1` | `0.51 N.m` | `60 deg/s` | 5.14-10.02x margin using conservative 0.71 N.m basis. | Current provisional |
 | G1 | ST3215 serial servo | Gripper linkage | TBD | TBD | Use for mechanical gripper. | Selected |
 
 ## 4. J2 gearbox conclusion
@@ -44,25 +44,26 @@ Status: provisional design output, ready for CAD concept modelling and gearbox p
 | Topic / item | Output |
 |---|---|
 | Selected current J2 approach | Gearbox only, no counterbalance. |
-| Selected ratio | `100:1` |
+| Selected ratio range | `50:1 to 60:1` |
 | Joint speed target | `30 deg/s = 5 rpm` |
-| Motor speed needed | `500 rpm` |
-| Required motor torque at 75 percent gearbox efficiency | `0.335 N.m` |
-| Approx available motor torque from supplied curve | `0.53 N.m` at `500 rpm` |
-| Estimated available output torque | `39.75 N.m` |
-| Torque margin | `1.58x` |
+| Motor speed needed | `250-300 rpm` |
+| Conservative motor torque used | `1.50 N.m`, 50 percent of the 3.0 N.m holding torque |
+| Estimated available output torque | `56.25-67.50 N.m` |
+| Torque margin | `1.45-1.74x` |
+| J2 gearbox continuous-rating screen | at least `38.9 N.m`; prefer `58.3 N.m` |
 | Main warning | Gearbox backlash and output bearing support now matter as much as torque. |
 
 ## 5. Mechanical structure outputs
 
 | Part | Output |
 |---|---|
-| L1 upper link | `40 x 30 x 2.5 mm` 6061-T6 aluminium rectangular tube, tall side vertical. |
-| L2 forearm link | `35 x 25 x 2.0 mm` 6061-T6 aluminium rectangular tube, tall side vertical. |
-| L1 tube-only mass | `0.246 kg`; design mass retained as `0.300 kg` with attachments. |
-| L2 tube-only mass | `0.157 kg`; design mass retained as `0.280 kg` with attachments. |
-| L1 estimated deflection | `0.047 mm` under simplified worst tip force. |
-| L2 estimated deflection | `0.035 mm` under simplified worst tip force. |
+| L1 upper link | Vortex-RC `40 mm OD x 36 mm ID` 3K roll-wrapped carbon-fibre tube. |
+| L2 forearm link | Vortex-RC `40 mm OD x 36 mm ID` 3K roll-wrapped carbon-fibre tube. |
+| Tube mass basis | Supplier listing `1.100 kg/m`, conservatively treated as tube mass pending weigh-in. |
+| L1 tube-only / design mass | `0.308 kg` / `0.410 kg`, including bonded-insert/local-protection reserve. |
+| L2 tube-only / design mass | `0.286 kg` / `0.390 kg`, including bonded-insert/local-protection reserve. |
+| L1 estimated deflection / nominal stress | `0.077 mm` / `3.79 MPa` using 64 GPa conservative CF modulus. |
+| L2 estimated deflection / nominal stress | `0.032 mm` / `1.83 MPa` using 64 GPa conservative CF modulus. |
 | Main structural caution | Joint plates, bearings, gearbox shafts and fasteners need CAD/detail validation. |
 
 ## 6. Accuracy and gearbox targets
@@ -73,15 +74,15 @@ Status: provisional design output, ready for CAD concept modelling and gearbox p
 | TCP repeatability target | `+/-3 mm` |
 | Preferred loaded gearbox backlash | `<=0.15 deg` output for J2/J3 |
 | Absolute maximum backlash target | `<=0.30 deg` output |
-| J2 ideal microstep output | `0.00225 deg` per microstep at `1600 microsteps/rev` and `100:1` |
-| Main accuracy driver | Backlash, compliance and calibration, not step resolution. |
+| J2 ideal microstep output | `0.00450-0.00375 deg` per microstep at `1600 microsteps/rev` and `50-60:1` |
+| Main accuracy driver | Backlash, compliance, homing error and possible missed steps, not nominal microstep resolution. |
 
 ## 7. Mechanical gripper output
 
 | Topic / item | Output | Status |
 |---|---|---|
 | Type | Near-parallel two-finger mechanical gripper. | Selected |
-| Actuator | Third ST3215 servo. | Selected |
+| Actuator | Third ST3215 servo; retained for G1 only. | Selected |
 | Opening target | `60-80 mm` clear opening. | Provisional |
 | Finger length target | `45-60 mm`. | Provisional |
 | Conservative pinch force target | About `20 N` continuous-style design estimate. | Provisional |
@@ -105,10 +106,11 @@ Status: provisional design output, ready for CAD concept modelling and gearbox p
 | Blocker | Why it matters |
 |---|---|
 | Select actual J1-J3 gearboxes | Need real ratio, efficiency, backlash, output bearing rating and mass. |
-| Validate J2 gearbox at 500 rpm motor speed | Torque curve looks acceptable, but selected driver/current/gearbox must be tested. |
-| Validate J4 continuous torque | ST3215 stall torque comparison is not enough for thermal reliability. |
+| Validate J2 gearbox at 250-300 rpm motor speed | The selected driver/current/gearbox torque curve must be tested. |
+| Validate wrist stepper packaging | Replace provisional J4/J5 gearbox/support masses with actual CAD mass properties and rerun the torque model. |
 | CAD collision check | Current maps are ideal kinematic maps only. |
 | Replace provisional masses | Use CAD mass properties after first assembly model. |
+| Open-loop position validation | Without external encoders, add repeatable homing references and verify that J1-J3 do not lose steps over the required duty cycle. |
 | Pogo pin current rating | ST3215 locked current can exceed what small contacts may safely carry. |
 
 ## 10. Final file map
@@ -123,12 +125,13 @@ Status: provisional design output, ready for CAD concept modelling and gearbox p
 | `analysis_artifacts/Torque_calculations.md` | Mass and torque calculation details. |
 | `analysis_artifacts/J2_gearbox_sizing_check.md` | J2 gearbox screening. |
 | `analysis_artifacts/Final_design_sizing.md` | Final drivetrain, structure, gripper and interface sizing. |
+| `analysis_artifacts/Selected_products_recalculation.md` | Current authoritative linked-product recalculation. |
 
 ## 11. Next physical work
 
 | Step | Action |
 |---|---|
-| 1 | Search/select actual gearboxes matching J1 `10:1`, J2 `100:1`, J3 `40:1`. |
+| 1 | Search/select actual gearboxes matching J1 `10-15:1`, J2 `50-60:1`, J3 `50-60:1`. |
 | 2 | Start CAD skeleton with axes, link tubes, gearbox envelopes and tool interface. |
 | 3 | Check CP2 folded pose, CP1 downward pose and R600 pose in CAD for physical collisions. |
 | 4 | Replace provisional masses with CAD mass properties and rerun torque calculations. |

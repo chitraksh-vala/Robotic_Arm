@@ -1,0 +1,190 @@
+﻿{
+    "Model_status":  "Selected-products arm sizing: 42AM08 at J1/J3/J4/J5; 23HS45-3504S at J2",
+    "ProductBasis":  {
+                         "Tube":  "Vortex-RC 40x36x1000 3K roll-wrapped CF",
+                         "TubeListedMass_kg_per_m":  1.1,
+                         "Nema17HoldingTorqueConservative_Nm":  0.71,
+                         "Nema23HoldingTorque_Nm":  3,
+                         "Nema23Mass_kg":  1.6
+                     },
+    "Geometry_mm":  {
+                        "L1":  280,
+                        "L2":  260,
+                        "ToolOffset":  100
+                    },
+    "MassModel_kg":  {
+                         "UpperLink":  0.41,
+                         "UpperCable":  0.075,
+                         "J3Assembly":  1.16,
+                         "ForearmLink":  0.39,
+                         "ForearmCable":  0.075,
+                         "J4Assembly":  0.91,
+                         "J5Assembly":  0.76,
+                         "ToolAssembly":  0.5,
+                         "Payload":  0.75
+                     },
+    "J2_carried_distal_mass_kg":  5.03,
+    "TorqueRequirements":  [
+                               {
+                                   "Joint":  "J1",
+                                   "TargetSpeed_deg_s":  30,
+                                   "Static_Nm":  0,
+                                   "Acceleration_Nm":  1.256,
+                                   "Friction_Nm":  0.2,
+                                   "RequiredOutputCapacity_Nm":  2.174,
+                                   "MinimumGearboxContinuousRating_Nm":  2.2,
+                                   "PreferredGearboxContinuousRating_Nm":  3.3,
+                                   "PreferredPeakRating_Nm":  4.3
+                               },
+                               {
+                                   "Joint":  "J2",
+                                   "TargetSpeed_deg_s":  30,
+                                   "Static_Nm":  22.545,
+                                   "Acceleration_Nm":  1.251,
+                                   "Friction_Nm":  2.254,
+                                   "RequiredOutputCapacity_Nm":  38.881,
+                                   "MinimumGearboxContinuousRating_Nm":  38.9,
+                                   "PreferredGearboxContinuousRating_Nm":  58.3,
+                                   "PreferredPeakRating_Nm":  77.8
+                               },
+                               {
+                                   "Joint":  "J3",
+                                   "TargetSpeed_deg_s":  30,
+                                   "Static_Nm":  9.395,
+                                   "Acceleration_Nm":  0.304,
+                                   "Friction_Nm":  0.939,
+                                   "RequiredOutputCapacity_Nm":  15.877,
+                                   "MinimumGearboxContinuousRating_Nm":  15.9,
+                                   "PreferredGearboxContinuousRating_Nm":  23.8,
+                                   "PreferredPeakRating_Nm":  31.8
+                               },
+                               {
+                                   "Joint":  "J4",
+                                   "TargetSpeed_deg_s":  60,
+                                   "Static_Nm":  1.354,
+                                   "Acceleration_Nm":  0.011,
+                                   "Friction_Nm":  0.135,
+                                   "RequiredOutputCapacity_Nm":  2.239,
+                                   "MinimumGearboxContinuousRating_Nm":  2.2,
+                                   "PreferredGearboxContinuousRating_Nm":  3.4,
+                                   "PreferredPeakRating_Nm":  4.5
+                               },
+                               {
+                                   "Joint":  "J5",
+                                   "TargetSpeed_deg_s":  60,
+                                   "Static_Nm":  0.307,
+                                   "Acceleration_Nm":  0.001,
+                                   "Friction_Nm":  0.031,
+                                   "RequiredOutputCapacity_Nm":  0.505,
+                                   "MinimumGearboxContinuousRating_Nm":  0.5,
+                                   "PreferredGearboxContinuousRating_Nm":  0.8,
+                                   "PreferredPeakRating_Nm":  1
+                               }
+                           ],
+    "GearboxScreen":  [
+                          {
+                              "Joint":  "J1",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "10:1",
+                              "MotorRpm":  50,
+                              "MotorTorque_Nm":  0.692,
+                              "OutputTorque_Nm":  5.19,
+                              "Margin_x":  2.39
+                          },
+                          {
+                              "Joint":  "J1",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "15:1",
+                              "MotorRpm":  75,
+                              "MotorTorque_Nm":  0.683,
+                              "OutputTorque_Nm":  7.69,
+                              "Margin_x":  3.54
+                          },
+                          {
+                              "Joint":  "J2",
+                              "Motor":  "23HS45-3504S NEMA 23",
+                              "Ratio":  "50:1",
+                              "MotorRpm":  250,
+                              "MotorTorque_Nm":  1.5,
+                              "OutputTorque_Nm":  56.25,
+                              "Margin_x":  1.45
+                          },
+                          {
+                              "Joint":  "J2",
+                              "Motor":  "23HS45-3504S NEMA 23",
+                              "Ratio":  "60:1",
+                              "MotorRpm":  300,
+                              "MotorTorque_Nm":  1.5,
+                              "OutputTorque_Nm":  67.5,
+                              "Margin_x":  1.74
+                          },
+                          {
+                              "Joint":  "J3",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "50:1",
+                              "MotorRpm":  250,
+                              "MotorTorque_Nm":  0.599,
+                              "OutputTorque_Nm":  22.46,
+                              "Margin_x":  1.41
+                          },
+                          {
+                              "Joint":  "J3",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "60:1",
+                              "MotorRpm":  300,
+                              "MotorTorque_Nm":  0.577,
+                              "OutputTorque_Nm":  25.96,
+                              "Margin_x":  1.64
+                          },
+                          {
+                              "Joint":  "J4",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "10:1",
+                              "MotorRpm":  100,
+                              "MotorTorque_Nm":  0.674,
+                              "OutputTorque_Nm":  5.06,
+                              "Margin_x":  2.26
+                          },
+                          {
+                              "Joint":  "J4",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "15:1",
+                              "MotorRpm":  150,
+                              "MotorTorque_Nm":  0.648,
+                              "OutputTorque_Nm":  7.29,
+                              "Margin_x":  3.26
+                          },
+                          {
+                              "Joint":  "J5",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "5:1",
+                              "MotorRpm":  50,
+                              "MotorTorque_Nm":  0.692,
+                              "OutputTorque_Nm":  2.6,
+                              "Margin_x":  5.14
+                          },
+                          {
+                              "Joint":  "J5",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "8:1",
+                              "MotorRpm":  80,
+                              "MotorTorque_Nm":  0.682,
+                              "OutputTorque_Nm":  4.09,
+                              "Margin_x":  8.1
+                          },
+                          {
+                              "Joint":  "J5",
+                              "Motor":  "42AM08 NEMA 17",
+                              "Ratio":  "10:1",
+                              "MotorRpm":  100,
+                              "MotorTorque_Nm":  0.674,
+                              "OutputTorque_Nm":  5.06,
+                              "Margin_x":  10.02
+                          }
+                      ],
+    "Limitations":  [
+                        "Supplier tube mass is treated as 1.100 kg/m conservatively; weigh delivered tube.",
+                        "J2 uses a 50%-of-holding-torque dynamic screen until a driver/supply curve is validated.",
+                        "No external encoder mass is included; verify the purchased motor SKU if integrated feedback is required."
+                    ]
+}

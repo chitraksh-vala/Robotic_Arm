@@ -10,13 +10,15 @@ $alphaWrist = 120.0 * [Math]::PI / 180.0
 
 $baseL1 = 0.280
 $baseL2 = 0.260
-$baseUpperLinkMass = 0.300
-$baseForearmLinkMass = 0.280
+$baseUpperLinkMass = 0.210
+$baseForearmLinkMass = 0.200
 $baseUpperCableMass = 0.075
 $baseForearmCableMass = 0.075
+$j2Nema23Mass_kg = 1.600
+$j2Nema23YawRadius_m = 0.0565
 
 $fixedMass = [ordered]@{
-    J3Assembly = 1.260
+    J3Assembly = 1.160
     WristAssembly = 0.300
     ToolAssembly = 0.500
     Payload = 0.750
@@ -192,8 +194,9 @@ function Get-InertiaAndSizing {
     )
 
     $iJ4 = $Mass.ToolAssembly * 0.050 * 0.050 + $Mass.Payload * $Lt * $Lt
+    $iJ1 = $iJ2 + $j2Nema23Mass_kg * [Math]::Pow($j2Nema23YawRadius_m, 2)
     $rows = @(
-        [pscustomobject]@{ Joint = 'J1'; Static_Nm = 0.0; Acceleration_Nm = $iJ2 * $alphaLower; Friction_Nm = 0.20 },
+        [pscustomobject]@{ Joint = 'J1'; Static_Nm = 0.0; Acceleration_Nm = $iJ1 * $alphaLower; Friction_Nm = 0.20 },
         [pscustomobject]@{ Joint = 'J2'; Static_Nm = $straightStatic.J2_Nm; Acceleration_Nm = $iJ2 * $alphaLower; Friction_Nm = $frictionFraction * $straightStatic.J2_Nm },
         [pscustomobject]@{ Joint = 'J3'; Static_Nm = $straightStatic.J3_Nm; Acceleration_Nm = $iJ3 * $alphaLower; Friction_Nm = $frictionFraction * $straightStatic.J3_Nm },
         [pscustomobject]@{ Joint = 'J4'; Static_Nm = $straightStatic.J4_Nm; Acceleration_Nm = $iJ4 * $alphaWrist; Friction_Nm = $frictionFraction * $straightStatic.J4_Nm },
@@ -275,8 +278,9 @@ $report = [pscustomobject]@{
         Link_and_cable_masses_scaled_with_length = $true
         Fixed_payload_kg = 0.750
         Fixed_tool_assembly_kg = 0.500
-        Fixed_J3_assembly_kg = 1.260
+        Fixed_J3_assembly_kg = 1.160
         Fixed_wrist_assembly_kg = 0.300
+        J2_motor_for_J1_yaw = 'StepperOnline 23HS45-3504S; 1.600 kg at 56.5 mm effective yaw radius.'
     }
     Summary = @($summaryRows)
     Results = @($results)

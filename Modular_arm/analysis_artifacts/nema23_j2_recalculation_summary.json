@@ -1,0 +1,166 @@
+﻿{
+    "Model_status":  "Current NEMA 23 J2 / carbon-fibre link preliminary sizing pass",
+    "Geometry_mm":  {
+                        "L1":  280,
+                        "L2":  260,
+                        "ToolOffset":  100
+                    },
+    "J2_motor":  {
+                     "Model":  "StepperOnline 23HS45-3504S",
+                     "HoldingTorque_Nm":  3,
+                     "Mass_kg":  1.6,
+                     "EffectiveJ1YawRadius_m":  0.0565,
+                     "DynamicTorqueScreeningFraction":  0.5
+                 },
+    "Mass_model_kg":  {
+                          "UpperLink":  0.21,
+                          "UpperCable":  0.075,
+                          "J3Assembly":  1.16,
+                          "ForearmLink":  0.2,
+                          "ForearmCable":  0.075,
+                          "WristAssembly":  0.3,
+                          "ToolAssembly":  0.5,
+                          "Payload":  0.75
+                      },
+    "Distal_mass_carried_by_J2_kg":  3.27,
+    "Torque_requirements":  [
+                                {
+                                    "Joint":  "J1",
+                                    "Static_Nm":  0,
+                                    "Acceleration_Nm":  0.753,
+                                    "Friction_Nm":  0.2,
+                                    "PreliminaryDemand_Nm":  0.953,
+                                    "RequiredOutputCapacity_Nm":  1.422,
+                                    "MinimumGearboxContinuousRating_Nm":  2.1,
+                                    "PreferredGearboxContinuousRating_Nm":  2.8
+                                },
+                                {
+                                    "Joint":  "J2",
+                                    "Static_Nm":  13.876,
+                                    "Acceleration_Nm":  0.748,
+                                    "Friction_Nm":  1.388,
+                                    "PreliminaryDemand_Nm":  16.011,
+                                    "RequiredOutputCapacity_Nm":  23.897,
+                                    "MinimumGearboxContinuousRating_Nm":  35.8,
+                                    "PreferredGearboxContinuousRating_Nm":  47.8
+                                },
+                                {
+                                    "Joint":  "J3",
+                                    "Static_Nm":  5.285,
+                                    "Acceleration_Nm":  0.179,
+                                    "Friction_Nm":  0.529,
+                                    "PreliminaryDemand_Nm":  5.993,
+                                    "RequiredOutputCapacity_Nm":  8.945,
+                                    "MinimumGearboxContinuousRating_Nm":  13.4,
+                                    "PreferredGearboxContinuousRating_Nm":  17.9
+                                }
+                            ],
+    "Gearbox_screen":  [
+                           {
+                               "Joint":  "J1",
+                               "Motor":  "42AM08 NEMA 17",
+                               "Ratio":  "10:1",
+                               "MotorRpm":  50,
+                               "ConservativeMotorTorque_Nm":  0.78,
+                               "AvailableOutput_Nm":  5.85,
+                               "Margin_x":  4.11
+                           },
+                           {
+                               "Joint":  "J1",
+                               "Motor":  "42AM08 NEMA 17",
+                               "Ratio":  "15:1",
+                               "MotorRpm":  75,
+                               "ConservativeMotorTorque_Nm":  0.77,
+                               "AvailableOutput_Nm":  8.66,
+                               "Margin_x":  6.09
+                           },
+                           {
+                               "Joint":  "J2",
+                               "Motor":  "23HS45-3504S NEMA 23",
+                               "Ratio":  "25:1",
+                               "MotorRpm":  125,
+                               "ConservativeMotorTorque_Nm":  1.5,
+                               "AvailableOutput_Nm":  28.12,
+                               "Margin_x":  1.18
+                           },
+                           {
+                               "Joint":  "J2",
+                               "Motor":  "23HS45-3504S NEMA 23",
+                               "Ratio":  "30:1",
+                               "MotorRpm":  150,
+                               "ConservativeMotorTorque_Nm":  1.5,
+                               "AvailableOutput_Nm":  33.75,
+                               "Margin_x":  1.41
+                           },
+                           {
+                               "Joint":  "J2",
+                               "Motor":  "23HS45-3504S NEMA 23",
+                               "Ratio":  "35:1",
+                               "MotorRpm":  175,
+                               "ConservativeMotorTorque_Nm":  1.5,
+                               "AvailableOutput_Nm":  39.38,
+                               "Margin_x":  1.65
+                           },
+                           {
+                               "Joint":  "J2",
+                               "Motor":  "23HS45-3504S NEMA 23",
+                               "Ratio":  "40:1",
+                               "MotorRpm":  200,
+                               "ConservativeMotorTorque_Nm":  1.5,
+                               "AvailableOutput_Nm":  45,
+                               "Margin_x":  1.88
+                           },
+                           {
+                               "Joint":  "J3",
+                               "Motor":  "42AM08 NEMA 17",
+                               "Ratio":  "35:1",
+                               "MotorRpm":  175,
+                               "ConservativeMotorTorque_Nm":  0.715,
+                               "AvailableOutput_Nm":  18.77,
+                               "Margin_x":  2.1
+                           },
+                           {
+                               "Joint":  "J3",
+                               "Motor":  "42AM08 NEMA 17",
+                               "Ratio":  "40:1",
+                               "MotorRpm":  200,
+                               "ConservativeMotorTorque_Nm":  0.7,
+                               "AvailableOutput_Nm":  21,
+                               "Margin_x":  2.35
+                           },
+                           {
+                               "Joint":  "J3",
+                               "Motor":  "42AM08 NEMA 17",
+                               "Ratio":  "50:1",
+                               "MotorRpm":  250,
+                               "ConservativeMotorTorque_Nm":  0.675,
+                               "AvailableOutput_Nm":  25.31,
+                               "Margin_x":  2.83
+                           }
+                       ],
+    "Recommended_ranges":  [
+                               {
+                                   "Joint":  "J1",
+                                   "RatioRange":  "10:1 to 15:1",
+                                   "MarginRange":  "4.1x to 6.1x",
+                                   "Reason":  "Original NEMA 17 curve has strong margin; favour backlash and bearing quality."
+                               },
+                               {
+                                   "Joint":  "J2",
+                                   "RatioRange":  "30:1 to 40:1",
+                                   "MarginRange":  "1.4x to 1.9x",
+                                   "Reason":  "Uses 50% holding-torque dynamic screen until the actual driver-voltage curve is validated; 35:1 is the centre screening point."
+                               },
+                               {
+                                   "Joint":  "J3",
+                                   "RatioRange":  "35:1 to 50:1",
+                                   "MarginRange":  "2.1x to 2.8x",
+                                   "Reason":  "Original NEMA 17 curve; 40:1 remains a good centre point."
+                               }
+                           ],
+    "Limitations":  [
+                        "J2 NEMA 23 curve in the manufacturer literature is at a stated test drive condition; final selection must use the curve for the purchased J2 driver and supply voltage.",
+                        "The current 1.600 kg NEMA 23 motor is included for J1 yaw inertia only. J2 gearbox mass and its exact centre of mass are not yet selected and must be added from CAD.",
+                        "Internal encoders are treated as part of motor mass. No external encoder mass is added."
+                    ]
+}

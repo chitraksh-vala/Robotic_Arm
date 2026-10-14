@@ -5,9 +5,9 @@ $jointSpeedRpm = $jointSpeedDegPerSec / 360.0 * 60.0
 $stepperHoldingTorqueNm = 0.80
 
 $cases = @(
-    [pscustomobject]@{ Name = 'Current no counterbalance'; OutputCapacityNm = 25.117 },
-    [pscustomobject]@{ Name = '5 Nm counterbalance'; OutputCapacityNm = 16.908 },
-    [pscustomobject]@{ Name = '8 Nm counterbalance'; OutputCapacityNm = 11.983 },
+    [pscustomobject]@{ Name = 'Current no counterbalance'; OutputCapacityNm = 23.897 },
+    [pscustomobject]@{ Name = '5 Nm counterbalance'; OutputCapacityNm = 15.688 },
+    [pscustomobject]@{ Name = '8 Nm counterbalance'; OutputCapacityNm = 10.763 },
     [pscustomobject]@{ Name = 'Mass combo + 5 Nm counterbalance'; OutputCapacityNm = 12.960 }
 )
 
@@ -55,19 +55,19 @@ $recommended = @(
     [pscustomobject]@{
         Case = 'Current no counterbalance'
         Recommended_ratio_window = '100:1 to 120:1'
-        Reason = '80:1 asks for about 52 percent of holding torque at 400 rpm with 75 percent efficiency; 100:1 drops this to about 42 percent at 500 rpm.'
+        Reason = '80:1 asks for about 51 percent of holding torque at 400 rpm with 75 percent efficiency; 100:1 drops this to about 41 percent at 500 rpm.'
         Status = 'Usable only if torque-speed curve confirms enough torque near 500-600 rpm'
     },
     [pscustomobject]@{
         Case = '5 Nm counterbalance'
         Recommended_ratio_window = '60:1 to 80:1'
-        Reason = 'At 75 percent efficiency, 60:1 asks for about 47 percent of holding torque at 300 rpm and 80:1 asks for about 35 percent at 400 rpm.'
+        Reason = 'At 75 percent efficiency, 60:1 asks for about 46 percent of holding torque at 300 rpm and 80:1 asks for about 34 percent at 400 rpm.'
         Status = 'Healthier than current baseline'
     },
     [pscustomobject]@{
         Case = '8 Nm counterbalance'
         Recommended_ratio_window = '50:1 to 60:1'
-        Reason = 'At 75 percent efficiency, 50:1 asks for about 40 percent of holding torque at 250 rpm and 60:1 asks for about 33 percent at 300 rpm.'
+        Reason = 'At 75 percent efficiency, 50:1 asks for about 38 percent of holding torque at 250 rpm and 60:1 asks for about 32 percent at 300 rpm.'
         Status = 'Preferred if counterbalance packaging is acceptable'
     },
     [pscustomobject]@{

@@ -10,10 +10,10 @@ $design = [ordered]@{
     Lt_mm = 100.0
     Payload_kg = 0.750
     ToolAssembly_kg = 0.500
-    DistalMovingMassForJ2_kg = 3.540
-    J1_required_Nm = 1.452
-    J2_required_Nm = 25.117
-    J3_required_Nm = 9.115
+    DistalMovingMassForJ2_kg = 3.270
+    J1_required_Nm = 1.414
+    J2_required_Nm = 23.897
+    J3_required_Nm = 8.945
     J4_required_Nm = 1.638
     J5_required_Nm = 0.506
 }
@@ -122,34 +122,32 @@ $servoRows = foreach ($joint in @(
     }
 }
 
-$E_al6061_Pa = 69e9
-$densityAl_kg_m3 = 2700.0
+$E_cf_Pa = 64e9
+$densityCf_kg_m3 = 1600.0
 
-function Get-RectTube {
+function Get-RoundCfTube {
     param(
         [string]$Name,
         [double]$Length_mm,
-        [double]$OuterHeight_mm,
-        [double]$OuterWidth_mm,
-        [double]$Wall_mm,
+        [double]$OuterDiameter_mm,
+        [double]$InnerDiameter_mm,
         [double]$DesignMass_kg,
         [double]$TipForce_N
     )
 
-    $innerH = $OuterHeight_mm - 2.0 * $Wall_mm
-    $innerW = $OuterWidth_mm - 2.0 * $Wall_mm
-    $area_mm2 = $OuterHeight_mm * $OuterWidth_mm - $innerH * $innerW
-    $I_mm4 = ($OuterWidth_mm * [Math]::Pow($OuterHeight_mm, 3) - $innerW * [Math]::Pow($innerH, 3)) / 12.0
-    $massTube_kg = ($area_mm2 * 1e-6) * ($Length_mm / 1000.0) * $densityAl_kg_m3
+    $wall_mm = ($OuterDiameter_mm - $InnerDiameter_mm) / 2.0
+    $area_mm2 = [Math]::PI * ([Math]::Pow($OuterDiameter_mm, 2) - [Math]::Pow($InnerDiameter_mm, 2)) / 4.0
+    $I_mm4 = [Math]::PI * ([Math]::Pow($OuterDiameter_mm, 4) - [Math]::Pow($InnerDiameter_mm, 4)) / 64.0
+    $massTube_kg = ($area_mm2 * 1e-6) * ($Length_mm / 1000.0) * $densityCf_kg_m3
     $I_m4 = $I_mm4 * 1e-12
     $L_m = $Length_mm / 1000.0
-    $deflection_m = $TipForce_N * [Math]::Pow($L_m, 3) / (3.0 * $E_al6061_Pa * $I_m4)
+    $deflection_m = $TipForce_N * [Math]::Pow($L_m, 3) / (3.0 * $E_cf_Pa * $I_m4)
     $moment_Nm = $TipForce_N * $L_m
-    $stress_Pa = $moment_Nm * (($OuterHeight_mm / 2.0) / 1000.0) / $I_m4
+    $stress_Pa = $moment_Nm * (($OuterDiameter_mm / 2.0) / 1000.0) / $I_m4
 
     [pscustomobject]@{
         Link = $Name
-        Selected_section = "$([int]$OuterHeight_mm)x$([int]$OuterWidth_mm)x$Wall_mm mm rectangular tube, tall side vertical"
+        Selected_section = "$([int]$OuterDiameter_mm) mm OD x $([int]$InnerDiameter_mm) mm ID ($wall_mm mm wall) 3K roll-wrapped carbon-fibre twill tube"
         Length_mm = $Length_mm
         Area_mm2 = [Math]::Round($area_mm2, 1)
         Tube_only_mass_kg = [Math]::Round($massTube_kg, 3)
@@ -158,15 +156,15 @@ function Get-RectTube {
         Tip_force_used_N = [Math]::Round($TipForce_N, 1)
         End_deflection_mm = [Math]::Round($deflection_m * 1000.0, 3)
         Bending_stress_MPa = [Math]::Round($stress_Pa / 1e6, 2)
-        Screen = 'Pass for concept; joint brackets need CAD/FEA'
+        Screen = 'Pass for concept; bonded inserts and joint brackets need CAD/FEA'
     }
 }
 
-$upperTipForce = (1.260 + 0.280 + 0.075 + 0.300 + 0.500 + 0.750) * $g
+$upperTipForce = (1.160 + 0.200 + 0.075 + 0.300 + 0.500 + 0.750) * $g
 $forearmTipForce = (0.300 + 0.500 + 0.750) * $g
 $linkRows = @(
-    Get-RectTube -Name 'L1 upper arm' -Length_mm 280.0 -OuterHeight_mm 40.0 -OuterWidth_mm 30.0 -Wall_mm 2.5 -DesignMass_kg 0.300 -TipForce_N $upperTipForce
-    Get-RectTube -Name 'L2 forearm' -Length_mm 260.0 -OuterHeight_mm 35.0 -OuterWidth_mm 25.0 -Wall_mm 2.0 -DesignMass_kg 0.280 -TipForce_N $forearmTipForce
+    Get-RoundCfTube -Name 'L1 upper arm' -Length_mm 280.0 -OuterDiameter_mm 40.0 -InnerDiameter_mm 36.0 -DesignMass_kg 0.210 -TipForce_N $upperTipForce
+    Get-RoundCfTube -Name 'L2 forearm' -Length_mm 260.0 -OuterDiameter_mm 40.0 -InnerDiameter_mm 36.0 -DesignMass_kg 0.200 -TipForce_N $forearmTipForce
 )
 
 $accuracyRows = @(
@@ -180,7 +178,7 @@ $accuracyRows = @(
         Topic = 'TCP repeatability target'
         Value = '+/-3 mm'
         Calculation = 'At 640 mm reach this corresponds to about +/-0.269 deg repeatable angular error.'
-        Decision = 'Backlash, encoder calibration and joint compliance dominate over microstep resolution.'
+        Decision = 'Backlash, open-loop step loss and joint compliance dominate over microstep resolution.'
     }
 )
 

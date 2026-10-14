@@ -51,9 +51,9 @@ link-length sweep and gearbox-only J2 sizing pass.
 | Upper-arm length, L1 | 280 mm | Selected provisional baseline for first CAD skeleton |
 | Forearm length, L2 | 260 mm | Selected provisional baseline for first CAD skeleton |
 | Tool offset, Lt | 100 mm | Confirmed input |
-| J1 gearbox ratio | 10:1 | Selected provisional drivetrain |
-| J2 gearbox ratio | 100:1 | Selected provisional gearbox-only shoulder drive |
-| J3 gearbox ratio | 40:1 | Selected provisional drivetrain |
+| J1 gearbox ratio | 10:1-15:1 | Selected-product provisional drivetrain |
+| J2 gearbox ratio | 50:1-60:1 | Selected-product provisional gearbox-only shoulder drive |
+| J3 gearbox ratio | 50:1-60:1 | Selected-product provisional drivetrain |
 | J2 counterbalance | Not used | User-directed current version |
 | Link split trial result | L1 = 250 mm, L2 = 290 mm was not adopted | It improved J2 torque only slightly while changing the validated baseline |
 
@@ -69,7 +69,7 @@ Lt = 100 mm
 The gearbox choices do not change the geometric reach equations. They affect speed,
 torque margin, backlash and motor rpm, which are documented in:
 
-- `analysis_artifacts/J2_gearbox_sizing_check.md`
+- `analysis_artifacts/Selected_products_recalculation.md`
 - `analysis_artifacts/Final_design_sizing.md`
 - `Final_outputs.md`
 
