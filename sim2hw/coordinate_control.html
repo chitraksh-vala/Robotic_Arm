@@ -160,7 +160,7 @@ input:focus{border-color:var(--blue)}
 
       <section class="section">
         <h2>Motion</h2>
-        <div class="field"><label>Move duration s</label><input id="duration" type="number" value="3.0" step="0.1" min="0.2" max="10"></div>
+        <div class="field"><label>Move duration s</label><input id="duration" type="number" value="7.0" step="0.1" min="0.2" max="10"></div>
         <div class="field"><label>Settle s</label><input id="settle_time" type="number" value="0.8" step="0.1" min="0" max="5"></div>
         <div class="field"><label>Max IK error mm</label><input id="max_err_mm" type="number" value="15" step="1" min="1" max="100"></div>
         <button id="checkBtn" class="btn full" onclick="checkReachability()">Check Reach</button>
@@ -179,6 +179,18 @@ input:focus{border-color:var(--blue)}
         <h2>Home Pose</h2>
         <button id="saveHomeBtn" class="btn primary full" onclick="saveCurrentAsHome()">Record Current As Home</button>
         <div id="homePose" class="hint">Saved Home: loading...</div>
+      </section>
+
+      <section class="section">
+        <h2>CV Board Calibration Points</h2>
+        <div class="hint">Wrist roll may vary. Place the same gripper reference point over each board coordinate.</div>
+        <div class="field"><label>Point name</label><input id="cvPointName" type="text" placeholder="board_origin"></div>
+        <div class="row">
+          <div class="field"><label>Board X cm</label><input id="cvPointX" type="number" step="0.1" value="0"></div>
+          <div class="field"><label>Board Y cm</label><input id="cvPointY" type="number" step="0.1" value="0"></div>
+        </div>
+        <button id="recordCVPointBtn" class="btn primary full" onclick="recordCVPoint()">Record Current Arm Point</button>
+        <div id="cvPoints" class="hint">Saved CV points: loading...</div>
       </section>
 
       <section class="section">
@@ -390,6 +402,7 @@ async function connectServer() {
     checkHardware();
     loadHomePose();
     loadGripperPositions();
+    loadCVPoints();
     refreshRender();
     updateRadiusLimitText();
     log('Connected to IK server', 'ok');
@@ -521,6 +534,61 @@ async function loadHomePose() {
     renderHomePose(r.pose);
   } catch (e) {
     document.getElementById('homePose').textContent = 'Saved Home: unavailable';
+  }
+}
+
+async function loadCVPoints() {
+  if (!connected) return;
+  try {
+    const r = await api('GET', '/cv_points');
+    renderCVPoints(r.points);
+  } catch (e) {
+    document.getElementById('cvPoints').textContent = 'Could not load saved CV points: ' + e.message;
+  }
+}
+
+function renderCVPoints(points) {
+  const el = document.getElementById('cvPoints');
+  const entries = Object.values(points || {});
+  if (!entries.length) {
+    el.textContent = 'No points saved. Record at least three non-collinear board points.';
+    return;
+  }
+  el.innerHTML = entries.map(p => {
+    const xy = p.board_xy_cm.map(v => Number(v).toFixed(1)).join(', ');
+    const xyz = p.robot_xyz_m.map(v => Number(v).toFixed(4)).join(', ');
+    return `<div><strong>${escapeHtml(p.name)}</strong><br>Board [${xy}] cm → IK [${xyz}] m<br>${escapeHtml(p.source)}</div>`;
+  }).join('<hr>');
+}
+
+async function recordCVPoint() {
+  if (!connected) { alert('Connect to the IK server first'); return; }
+  const name = document.getElementById('cvPointName').value.trim();
+  const x = val('cvPointX');
+  const y = val('cvPointY');
+  if (!name || !Number.isFinite(x) || !Number.isFinite(y)) {
+    log('Enter a point name and finite board X/Y coordinates in cm.', 'err');
+    return;
+  }
+  const btn = document.getElementById('recordCVPointBtn');
+  btn.disabled = true;
+  try {
+    const payload = {name, board_xy_cm: [x, y]};
+    await checkHardware();
+    if (hwOnline) {
+      const response = await fetch(`${HW_BRIDGE_URL}/joints`);
+      const hardware = await response.json();
+      if (!response.ok || !hardware.joints) throw new Error('Could not read hardware joints');
+      payload.joints = hardware.joints;
+    }
+    const result = await api('POST', '/cv_points', payload);
+    renderCVPoints(result.points);
+    const xyz = result.point.robot_xyz_m.map(v => Number(v).toFixed(4)).join(', ');
+    log(`Saved ${name}: IK world XYZ [${xyz}] m (${result.point.source})`, 'ok');
+  } catch (e) {
+    log('Record CV point failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -692,7 +760,12 @@ async function checkReachability() {
 }
 
 function renderSteps(steps, preflight) {
-  const checks = (preflight || []).map(c => `<div class="ok">${escapeHtml(c.label)} preflight: ${c.err_mm} mm</div>`).join('');
+  const checks = (preflight || []).map(c => {
+    let text = `${c.label} preflight: ${c.err_mm} mm`;
+    if (c.tilt_deg != null) text += `, tilt ${c.tilt_deg}°`;
+    if (c.z != null) text += ` @ z=${c.z} m`;
+    return `<div class="ok">${escapeHtml(text)}</div>`;
+  }).join('');
   const rows = (steps || []).map((s,i) => {
     let text = `${i + 1}. ${s.type}`;
     if (s.type === 'move_ik') text += ` x=${s.x} y=${s.y} z=${s.z} orientation=${s.orientation || 'free'}`;

@@ -25,9 +25,9 @@ HTTP Endpoints:
   GET  /ping               → connection status
 
 Motion Control for STS3215:
-  The servos use Goal_Time (milliseconds) to control motion speed.
+  The servos receive small position updates along a quintic trajectory.
   Higher values = slower, smoother motion
-  Default: 1500ms (1.5 seconds to reach target)
+  Default: 4000ms (4 seconds to reach target)
   Range: 0-10000ms
 """
 import argparse, json, math, time, threading, sys
@@ -171,10 +171,14 @@ class HWArm:
         self.bus  = None
         self.connected = False
         self._lock = threading.Lock()
-        # Motion smoothing parameters for STS3215 servos
-        self.goal_time_ms = 1500    # Time in milliseconds to reach target (higher = slower, smoother)
-        self.move_speed = 100       # For Feetech fallback (range: 0-1000)
-        self.move_acceleration = 30 # For Feetech fallback (range: 0-254)
+        self._trajectory_lock = threading.Lock()
+        self._trajectory = None
+        self._trajectory_position = None
+        self._trajectory_running = False
+        # Trajectory duration and conservative fallback servo settings.
+        self.goal_time_ms = 3500
+        self.move_speed = 45
+        self.move_acceleration = 8
 
     def connect(self):
         if HAS_LEROBOT:
@@ -186,6 +190,12 @@ class HWArm:
             print("   Install with: pip install lerobot")
             print("   Running in MOCK mode — commands logged only.")
             self.connected = True   # mock
+
+        if self.bus is not None:
+            self._trajectory_position = self.read_joints()
+            self._trajectory_running = True
+            threading.Thread(target=self._trajectory_loop, daemon=True,
+                             name="so101-smooth-motion").start()
 
     def _connect_lerobot(self):
         motors = {
@@ -237,22 +247,35 @@ class HWArm:
         return int(2048 + rad * self.TICKS_PER_RAD)
 
     def send_joints(self, joint_dict: dict):
-        """Send joint angle dict {name: rad} to real arm with smooth motion."""
+        """Queue a smooth joint-space trajectory to the requested positions."""
         if not self.connected:
             return
         print(f"  HW cmd: { {k: round(v,3) for k,v in joint_dict.items()} } (time={self.goal_time_ms}ms)")
         if self.bus is None:
             return   # mock mode
+        values = {name: float(value) for name, value in joint_dict.items() if name in JOINT_NAMES}
+        if not values:
+            return
+        with self._trajectory_lock:
+            if self._trajectory_position is None:
+                self._trajectory_position = self.read_joints()
+            start = {name: float(self._trajectory_position.get(name, 0.0)) for name in values}
+            duration = max(0.25, min(10.0, self.goal_time_ms / 1000.0))
+            self._trajectory = {
+                "start": start,
+                "target": values,
+                "start_time": time.monotonic(),
+                "duration": duration,
+            }
+
+    def _write_joints(self, joint_dict: dict, motion_time_ms: int):
+        """Write one trajectory sample to the motor bus."""
         with self._lock:
             if HAS_LEROBOT:
-                # Convert radians to degrees for the motor bus
                 degrees_dict = {k: v * 180 / math.pi for k, v in joint_dict.items()}
                 try:
-                    # For STS3215, use Goal_Time to control motion speed/smoothness
-                    # Goal_Time is in milliseconds - higher values = slower, smoother motion
-                    time_dict = {k: self.goal_time_ms for k in degrees_dict.keys()}
+                    time_dict = {k: int(motion_time_ms) for k in degrees_dict}
                     self.bus.sync_write("Goal_Time", time_dict)
-                    # Now send the position
                     self.bus.sync_write("Goal_Position", degrees_dict, normalize=True)
                 except Exception as e:
                     print(f"  Error writing to motors: {e}")
@@ -260,8 +283,33 @@ class HWArm:
                 for i, name in enumerate(JOINT_NAMES):
                     if name in joint_dict:
                         ticks = self.rad_to_ticks(joint_dict[name], self.MOTOR_IDS[i])
-                        # Use configurable speed and acceleration instead of hardcoded values
                         self.bus.WritePosEx(self.MOTOR_IDS[i], ticks, self.move_speed, self.move_acceleration)
+
+    def _trajectory_loop(self):
+        """Send 20 Hz quintic samples for gradual acceleration and deceleration."""
+        interval_s = 0.05
+        segment_time_ms = 120
+        while self._trajectory_running:
+            cycle_start = time.monotonic()
+            with self._trajectory_lock:
+                trajectory = self._trajectory
+                if trajectory is not None:
+                    t = min(max((cycle_start - trajectory["start_time"]) / trajectory["duration"], 0.0), 1.0)
+                    eased = t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+                    sample = {
+                        name: trajectory["start"][name] + eased * (trajectory["target"][name] - trajectory["start"][name])
+                        for name in trajectory["target"]
+                    }
+                    if t >= 1.0:
+                        sample.update(trajectory["target"])
+                        self._trajectory = None
+                    if self._trajectory_position is None:
+                        self._trajectory_position = {}
+                    self._trajectory_position.update(sample)
+                    self._write_joints(sample, segment_time_ms)
+            remaining = interval_s - (time.monotonic() - cycle_start)
+            if remaining > 0:
+                time.sleep(remaining)
 
     def read_joints(self) -> dict:
         """Read current joint positions from real arm."""
@@ -302,16 +350,22 @@ class HWArm:
                 print(f"  Error setting gripper torque: {e}")
 
     def stop(self):
-        """Hold the current measured position as the new target."""
+        """Cancel the active ramp and hold the current measured position."""
         if not self.connected:
             return
         current = self.read_joints()
-        old_goal_time = self.goal_time_ms
-        self.goal_time_ms = 0
-        self.send_joints(current)
-        self.goal_time_ms = old_goal_time
+        with self._trajectory_lock:
+            self._trajectory = None
+            if self._trajectory_position is None:
+                self._trajectory_position = {}
+            self._trajectory_position.update(current)
+            if self.bus is not None:
+                self._write_joints(current, 100)
 
     def disconnect(self):
+        self._trajectory_running = False
+        with self._trajectory_lock:
+            self._trajectory = None
         if self.bus is not None:
             try:
                 if HAS_LEROBOT: self.bus.disconnect()
@@ -407,7 +461,7 @@ class HWHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": True, "positions": saved, "file": str(GRIPPER_POSITIONS_FILE)})
         elif self.path == "/set_motion_time":
             # Set motion time in milliseconds (higher = slower, smoother)
-            time_ms = body.get("time_ms", 1500)
+            time_ms = body.get("time_ms", 3500)
             arm.goal_time_ms = max(0, min(10000, time_ms))  # Cap at 10 seconds
             self.send_json({"ok": True, "time_ms": arm.goal_time_ms})
         elif self.path == "/set_speed":

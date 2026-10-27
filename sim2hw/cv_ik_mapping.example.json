@@ -1,0 +1,4 @@
+{
+  "robot_points_file": "sim2hw/cv_robot_points.json",
+  "tool_contact_offset_m": 0.0
+}

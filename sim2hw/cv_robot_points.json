@@ -1,0 +1,65 @@
+{
+  "coordinate_frame": "ik_server_world",
+  "units": {
+    "board_xy": "cm",
+    "robot_xyz": "m"
+  },
+  "points": {
+    "Corner_2": {
+      "name": "Corner_2",
+      "board_xy_cm": [
+        21.3,
+        0.0
+      ],
+      "robot_xyz_m": [
+        0.10082543137607024,
+        0.11687181824856793,
+        -0.009209506474618073
+      ],
+      "source": "hardware_joint_fk",
+      "saved_at": "2026-10-19T19:12:56+0530"
+    },
+    "Corner_3": {
+      "name": "Corner_3",
+      "board_xy_cm": [
+        21.3,
+        28.3
+      ],
+      "robot_xyz_m": [
+        0.11146747779429549,
+        -0.10408673768442789,
+        -0.006079459143619681
+      ],
+      "source": "hardware_joint_fk",
+      "saved_at": "2026-10-19T19:12:21+0530"
+    },
+    "Corner_1": {
+      "name": "Corner_1",
+      "board_xy_cm": [
+        0.0,
+        0.0
+      ],
+      "robot_xyz_m": [
+        0.2981110391333617,
+        0.15173137871398762,
+        -0.01832021623333624
+      ],
+      "source": "hardware_joint_fk",
+      "saved_at": "2026-10-19T19:13:52+0530"
+    },
+    "Corner_4": {
+      "name": "Corner_4",
+      "board_xy_cm": [
+        0.0,
+        28.3
+      ],
+      "robot_xyz_m": [
+        0.31817279201652804,
+        -0.1043739162475228,
+        -0.018403769309908904
+      ],
+      "source": "hardware_joint_fk",
+      "saved_at": "2026-10-19T19:14:20+0530"
+    }
+  }
+}
