@@ -12,13 +12,40 @@ This repository contains several SO-ARM101 robotic-arm workflows:
 
 The project is a workspace, not one single app. Most folders can be run independently, so start from the section that matches the function you want to use.
 
+## Quick Start: Vision Pick-and-Place
+
+The camera detector finds objects on the workspace board, and the IK server and hardware bridge pick a selected one and place it at the board's Corner 2.
+
+Set up once (Windows PowerShell, from this folder):
+
+```powershell
+.\setup.ps1             # creates .venv and installs requirements; -SimOnly skips the real-arm driver
+```
+
+Run (each part opens in its own window):
+
+```powershell
+.\run.ps1 -Port COM4    # IK server + hardware bridge + object detector
+.\run.ps1               # simulation only, no real arm
+```
+
+If scripts are blocked: `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (same for `run.ps1`). `Get-Help .\run.ps1 -Detailed` lists all options (camera, 3-D viewer, dashboard, extra arguments).
+
+| Part | Docs |
+|---|---|
+| IK server and hardware bridge | [sim2hw/README.md](sim2hw/README.md) |
+| Object detector: calibration, keys, teaching | [CV-seg/Robotic_Arm-main/README.md](CV-seg/Robotic_Arm-main/README.md) |
+| Board-to-robot calibration points | [sim2hw/CV_IK_MAPPING.md](sim2hw/CV_IK_MAPPING.md) |
+
+Requirements: Python 3.12 or 3.13 (3.10+ with `-SimOnly`), a USB camera, and for the real arm a LeRobot-calibrated SO-101 (see [LeRobot Calibration](#lerobot-calibration)). The packages are in `requirements.txt` and `requirements-hardware.txt`.
+
 ## Repository Map
 
 | Folder | Purpose |
 |---|---|
 | `sim2hw/` | Browser dashboard, MuJoCo IK server, and optional hardware bridge for the real arm |
 | `RL_train/` | Gymnasium/MuJoCo RL environment, SAC training script, policy viewer, and related assets |
-| `CV-seg/` | Computer-vision item segregation and tic tac toe scripts |
+| `CV-seg/` | Computer-vision item segregation and tic tac toe scripts; `CV-seg/Robotic_Arm-main/` holds the pick-and-place object detector |
 | `sim_train/` | MuJoCo simulator, trajectory recording, trajectory playback, and recording utilities |
 | `dual_arm/` | Separate dual-arm simulation/dashboard experiments |
 
@@ -92,6 +119,8 @@ lerobot-setup-motors --teleop.type=so101_leader --teleop.port=COM5
 ## Browser Control
 
 Use this when you want to control the arm from the web dashboard. This can run in simulation only, or mirror commands to real hardware if the hardware bridge is also running.
+
+Shortcut that starts everything below and opens the dashboard: `.\run.ps1 -Port COM4 -Detector none -Dashboard` (leave out `-Port COM4` for simulation only). Full reference: [sim2hw/README.md](sim2hw/README.md).
 
 Start the IK server:
 

@@ -1,6 +1,11 @@
 # SO-ARM101 Startup Guide
 
-Start the three services in separate terminal windows:
+**Shortcut:** from the repository root, `.\run.ps1 -Port COM4 -Detector none -Dashboard`
+starts all three services below in their own windows (run `.\setup.ps1` once
+first). Without `-Detector none` it also starts the camera object detector.
+Full reference: [README.md](README.md).
+
+Or start the three services by hand in separate terminal windows:
 
 ## 1. IK Server (port 7842)
 ```powershell
@@ -18,9 +23,13 @@ python hw_bridge.py --port COM4
 ```
 *Replace `COM4` with your actual serial port found from lerobot-find-port (e.g., `/dev/ttyUSB0` on Linux)*
 
-**⚡ Motion Speed Control:** The hardware now uses smooth, controlled motion with Goal_Time=1500ms (1.5 seconds).
-- To adjust: `python test_motion_speed.py --preset slow` (2s), `medium` (1.5s), or `fast` (1s)
-- See MOTION_SPEED_README.md for details
+**Motion:** the bridge streams each motion to the servos at 50 Hz and applies
+LeRobot's SO-101 servo gains on connect, so moves are smooth. Each move's
+duration comes from the IK server (the object detector uses 4 s; change it with
+`--move-duration`). To set the duration of manual `/move` commands:
+`python test_motion_speed.py --preset slow` (2 s), `medium` (1.5 s) or `fast` (1 s).
+Servo tuning and gripper options (`--p-gain`, `--grip-squeeze-deg`,
+`--log-health` …) are listed in [README.md](README.md#hardware-bridge-hw_bridgepy).
 
 ## 3. Dashboard HTTP Server (port 8000)
 Required to bypass CORS protocol issues between dashboard and hardware bridge

@@ -138,9 +138,12 @@ The controller also checks radial distance from the base:
 radius = sqrt(x^2 + y^2)
 ```
 
-The default minimum radius is `0.12 m`. For example, `x=0`, `y=0.08` is only
-`0.08 m` from the base, so it is rejected before motion starts. Use a more reachable
-starting target such as `x=0.20`, `y=0.00`, `z=0.15`.
+The default minimum radius is `0.08 m` (`min_radius_m` overrides it per request).
+For example, `x=0`, `y=0.06` is only `0.06 m` from the base, so it is rejected
+before motion starts. Between about 0.08 and 0.12 m the MuJoCo model may predict
+the gripper touching the arm's own shoulder; the preflight then shows a warning
+instead of blocking, because the real arm reaches closer than the model. Use a
+comfortable starting target such as `x=0.20`, `y=0.00`, `z=0.15`.
 
 The UI also shows the usable radius band for the current `Z`. Low pickup targets are
 allowed down to `z=-0.05`, but they still need to pass `Check Reach` before running

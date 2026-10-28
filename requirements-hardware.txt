@@ -1,0 +1,10 @@
+# Real SO-ARM101 arm: the Feetech STS3215 servo driver used by sim2hw/hw_bridge.py.
+#
+# LeRobot needs Python 3.12 or newer and installs PyTorch (a large download).
+# It also pulls in opencv-python-headless, which cannot open windows and
+# clashes with opencv-python. setup.ps1 removes the headless build again; after
+# a manual install run:
+#   pip uninstall -y opencv-python-headless
+#   pip install --force-reinstall --no-deps "opencv-python>=4.9,<4.14"
+-r requirements.txt
+lerobot[feetech]>=0.6,<0.7

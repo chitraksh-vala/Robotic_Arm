@@ -2011,8 +2011,8 @@ def main() -> int:
                         help="object height above the board in cm (default: 4.0)")
     parser.add_argument("--grasp-height", type=float, default=1.0,
                         help="gripper target height above the board in cm (default: 1.0; lower-side grasp)")
-    parser.add_argument("--move-duration", type=float, default=5.0,
-                        help="seconds per arm motion (default: 5; lower is faster)")
+    parser.add_argument("--move-duration", type=float, default=4.0,
+                        help="seconds per arm motion (default: 4; lower is faster)")
     parser.add_argument("--feedback-step-xy-mm", type=float, default=5.0,
                         help="drop-target feedback step for X/Y in mm (default: 5)")
     parser.add_argument("--feedback-step-z-mm", type=float, default=2.0,

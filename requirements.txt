@@ -1,0 +1,15 @@
+# Vision pick-and-place stack:
+#   sim2hw/ik_server.py                              MuJoCo IK server
+#   CV-seg/Robotic_Arm-main/object_detector_standalone.py   camera object detector
+#   (sim2hw/hw_bridge.py also needs requirements-hardware.txt)
+#
+# Easiest: run .\setup.ps1 from this folder. Manual install:
+#   pip install -r requirements.txt            # simulation + camera only
+#   pip install -r requirements-hardware.txt   # + the real arm (LeRobot)
+#
+# Upper bounds match LeRobot 0.6 (numpy < 2.3, OpenCV < 4.14), so both files
+# can share one environment. Python 3.10+ (3.12+ for the hardware file).
+mujoco>=3.1,<4
+numpy>=2.0,<2.3
+opencv-python>=4.9,<4.14
+Pillow>=10

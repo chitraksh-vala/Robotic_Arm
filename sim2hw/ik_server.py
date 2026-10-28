@@ -322,6 +322,15 @@ def save_ik_pose_points(points):
 # ── Optional hardware bridge mirror ──────────────────────────────────────────
 HW_BRIDGE_URL = "http://127.0.0.1:7843"
 
+def hw_get(path, timeout=0.5):
+    """GET a JSON status from the hardware bridge; None if it is not running."""
+    try:
+        with urllib.request.urlopen(HW_BRIDGE_URL + path, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return None
+
+
 def mirror_hw(path, payload):
     """Mirror sim motion to hardware bridge if available."""
     try:
@@ -1019,7 +1028,8 @@ class SimState:
         y = float(command["y"])
         z = float(command["z"])
         duration = float(command.get("duration", 7.0))
-        settle_time = float(command.get("settle_time", 0.6))
+        # Pause after each arm move; smooth streaming needs little settling.
+        settle_time = float(command.get("settle_time", 0.4))
         gripper_settle = float(command.get("gripper_settle", 0.8))
         max_err_mm = float(command.get("max_err_mm", 15.0))
         approach_max_err_mm = float(command.get("approach_max_err_mm", max_err_mm + 10.0))
@@ -1267,8 +1277,12 @@ class SimState:
                 moves.append(move_step(
                     final_label if is_last else f"{final_label} (waypoint {index})",
                     step_z, q, max(0.5, duration * share),
-                    final_settle if is_last else min(settle_time, 0.1),
+                    final_settle if is_last else 0.0,
                 ))
+                if not is_last:
+                    # Flow through this waypoint: the pipeline sends the run
+                    # as one continuous path instead of stopping here.
+                    moves[-1]["blend_next"] = True
                 prev_z = step_z
             return moves
 
@@ -1293,6 +1307,8 @@ class SimState:
                 "label": "Close gripper after reaching target" if post_grip_value >= 0.5 else "Open gripper after reaching target",
                 "value": post_grip_value,
                 "settle_time": gripper_settle,
+                # A pick's close is checked: stop if the jaws met nothing.
+                "verify_grip": post_grip_value >= 0.5 and command.get("verify_grip", True),
             })
         if command.get("retreat", True) and has_descent:
             steps.extend(path_moves(list(reversed(down_path)), "Retreat above target", settle_time))
@@ -1650,6 +1666,18 @@ class SimState:
         return self.gripper_positions.copy()
 
     # ── pipeline ──────────────────────────────────────────────────────────────
+    def _hardware_grip_result(self, wait_s=2.0):
+        """Bridge's close-until-contact result, waiting while it is closing."""
+        deadline = time.time() + wait_s
+        while True:
+            status = hw_get("/grip_status")
+            if status is None:
+                return None
+            grip = status.get("grip", {})
+            if grip.get("state") != "closing" or time.time() > deadline:
+                return grip
+            self._sleep_interruptible(0.1)
+
     def _sleep_interruptible(self, duration, interval=0.05):
         end_time = time.time() + max(0.0, float(duration))
         while time.time() < end_time:
@@ -1657,9 +1685,29 @@ class SimState:
                 raise RuntimeError("Stopped by kill switch")
             time.sleep(min(interval, end_time - time.time()))
 
+    @staticmethod
+    def _merge_blended_moves(steps):
+        """Join runs of joint moves marked blend_next into one path step."""
+        merged, run = [], []
+        for step in steps:
+            joint_move = step.get("type", "move_ik") == "move_ik" and "joints" in step
+            if joint_move and (run or step.get("blend_next")):
+                run.append(step)
+                if not step.get("blend_next"):
+                    merged.append({"type": "move_path", "label": step.get("label", "Path"),
+                                   "parts": run})
+                    run = []
+                continue
+            merged.extend(run)
+            run = []
+            merged.append(step)
+        merged.extend(run)
+        return merged
+
     def run_pipeline(self, steps):
         if self.pipeline_running:
             raise ValueError("A pipeline is already running")
+        steps = self._merge_blended_moves(steps)
         self.pipeline_running = True
         self.pipeline_stop_requested = False
         self.pipeline_log     = []
@@ -1714,6 +1762,24 @@ class SimState:
                         self._sleep_interruptible(settle_time)
 
                         self.pipeline_log.append(f"  ✓ err={err*1000:.1f}mm iters={iters} ({duration}s motion + {settle_time}s settle)")
+                    elif stype == "move_path":
+                        # One continuous hardware motion through all parts.
+                        parts = step["parts"]
+                        mirror_hw("/move_path", {
+                            "waypoints": [{n: float(p_["joints"][n]) for n in ARM_JOINTS}
+                                          for p_ in parts],
+                            "durations": [float(p_.get("duration", 1.0)) for p_ in parts],
+                        })
+                        for part in parts:
+                            if self.pipeline_stop_requested:
+                                raise RuntimeError("Stopped by kill switch")
+                            q = [float(part["joints"][n]) for n in ARM_JOINTS]
+                            err = self.move_to_joints(q, (part["x"], part["y"], part["z"]),
+                                                      duration=part.get("duration", 1.0))
+                            self._sleep_interruptible(part.get("duration", 1.0))
+                            self.pipeline_log.append(f"  ✓ {part.get('label', 'waypoint')} "
+                                                     f"err={err*1000:.1f}mm (no stop)")
+                        self._sleep_interruptible(parts[-1].get("settle_time", 0.5))
                     elif stype == "gripper":
                         mirror_hw("/set_motion_time", {"time_ms": int(step.get("settle_time", 0.8) * 1000)})
                         self.set_gripper(step.get("value", 0))
@@ -1723,6 +1789,18 @@ class SimState:
                         self._sleep_interruptible(step.get("settle_time", 0.8))
                         # Now inverted: value 0 = OPEN, value 1 = CLOSE
                         self.pipeline_log.append(f"  ✓ Gripper={'OPEN' if step.get('value',0)<0.5 else 'CLOSE'}")
+                        if step.get("verify_grip"):
+                            grip = self._hardware_grip_result()
+                            if grip is None:
+                                self.pipeline_log.append("  (grip not checked: hardware bridge offline)")
+                            elif grip.get("state") == "empty":
+                                raise RuntimeError(
+                                    "Nothing was gripped: the gripper closed fully without meeting "
+                                    "the object. Check the pick position (nudge) and object size.")
+                            else:
+                                self.pipeline_log.append(
+                                    f"  ✓ Grip {grip.get('state')}: contact at "
+                                    f"{grip.get('contact_angle')} rad, load {grip.get('load_pct')} %")
                     elif stype == "home":
                         duration = step.get("duration", 7.0)
                         self.home(duration=duration)
