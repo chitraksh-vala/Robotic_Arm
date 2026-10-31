@@ -31,7 +31,9 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
 import os
+import re
 import sys
+import threading
 import time
 import urllib.request
 from typing import List, Tuple, Dict, Optional
@@ -145,7 +147,11 @@ class ObjectDetector:
         s_min, v_min = light['s_min'], light['v_min']
         # Smooth sensor texture before thresholding so a printed/textured
         # circle forms one solid contour instead of many small patches.
-        hsv = cv2.GaussianBlur(hsv, (5, 5), 0)
+        # Blur the colour image, not HSV: hue wraps at red (179 -> 0), and
+        # averaging noisy red pixels at ~2 and ~178 gave ~90 (green/cyan), so
+        # red objects broke into speckles of other colours and were missed.
+        hsv = cv2.cvtColor(cv2.GaussianBlur(self.normalized_bgr, (5, 5), 0),
+                           cv2.COLOR_BGR2HSV)
 
         # Require clear color on most hues so slight color casts on the white
         # workspace do not become false cyan/blue objects.
@@ -197,8 +203,10 @@ class ObjectDetector:
             mask = cv2.medianBlur(mask, 3)
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_kernel)
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_kernel)
+            tape_coloured = roi_mask is not None and color_name in self.tape_colors
             if roi_mask is not None:
-                tape_coloured = color_name in self.tape_colors
+                # Inside the board, before the tape inset trims it.
+                board_part = cv2.bitwise_and(mask, roi_mask)
                 mask = cv2.bitwise_and(mask, roi_tape_safe if tape_coloured else roi_mask)
 
             # Find contours
@@ -223,6 +231,13 @@ class ObjectDetector:
                 if reason:
                     self.rejected[reason] = self.rejected.get(reason, 0) + 1
                     continue
+                if tape_coloured:
+                    # The tape inset also trimmed this object's edge where
+                    # it nears the tape, shrinking it and shifting its centre
+                    # (the pick target). Grow it back by up to the inset
+                    # within its own colour inside the board; the checks
+                    # above already ran on the trimmed outline.
+                    contour = self._restore_tape_inset(contour, board_part, inset)
                 # Label colour from the lighting-normalised pixels.
                 color = self._estimate_color(hsv, contour, color_name, light)
                 # Remove pixel-scale stair steps from the outline while
@@ -261,6 +276,18 @@ class ObjectDetector:
             if not duplicate:
                 unique.append(obj)
         return unique
+
+    @staticmethod
+    def _restore_tape_inset(contour, board_part: np.ndarray, inset: int):
+        """Contour grown by up to inset+1 px into board_part (its colour,
+        inside the board); the original contour if that fails."""
+        blob = np.zeros(board_part.shape, np.uint8)
+        cv2.drawContours(blob, [contour], -1, 255, -1)
+        grow = cv2.dilate(blob, cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (2 * inset + 3, 2 * inset + 3)))
+        blob |= grow & board_part
+        grown, _ = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        return max(grown, key=cv2.contourArea) if grown else contour
 
     def _reject_reason(self, contour, detect_scale: float,
                        roi_interior: Optional[np.ndarray],
@@ -705,6 +732,7 @@ DEFAULT_CALIB_FILE = "workspace_calibration.json"
 DEFAULT_HEIGHT_CALIB_FILE = "workspace_height_calibration.json"
 DEFAULT_IK_MAPPING_FILE = "sim2hw/cv_ik_mapping.json"
 DEFAULT_IK_CORRECTIONS_FILE = "sim2hw/cv_pick_corrections.json"
+DEFAULT_COLOR_PLACES_FILE = "sim2hw/cv_color_places.json"
 
 
 # ---- calibration helpers ---------------------------------------------------
@@ -1104,7 +1132,10 @@ BUTTONS = {
              (40, 40, 200), "KILL / STOP  [s]"),
     "home": ((PANEL_WIDTH // 2 + 5, BUTTON_TOP, PANEL_WIDTH - PAD, BUTTON_BOTTOM),
              (50, 120, 50), "HOME  [h]"),
+    "forget": ((PAD, BUTTON_BOTTOM + 8, PANEL_WIDTH - PAD, BUTTON_BOTTOM + 38),
+               (40, 90, 150), "DELETE OLD SPOTS (earlier sessions)"),
 }
+BUTTONS_END = max(box[3] for box, _, _ in BUTTONS.values())
 SWATCH_BGR = {
     'red': (40, 40, 220), 'orange': (0, 140, 255), 'yellow': (0, 220, 240),
     'lime': (0, 255, 170), 'green': (60, 180, 60), 'teal': (150, 160, 0),
@@ -1160,7 +1191,8 @@ def status_color(text: str):
 
 
 def render_panel(frame: np.ndarray, sections: List[Dict],
-                 show_buttons: bool = False) -> np.ndarray:
+                 show_buttons: bool = False,
+                 button_labels: Optional[Dict[str, str]] = None) -> np.ndarray:
     """Return frame + a side panel built from prioritised sections.
 
     Each section is {"title": str|None, "rows": [row...], "priority": int}
@@ -1170,7 +1202,7 @@ def render_panel(frame: np.ndarray, sections: List[Dict],
     """
     h = frame.shape[0]
     panel = np.full((h, PANEL_WIDTH, 3), PANEL_BG, np.uint8)
-    top = BUTTON_BOTTOM + 14 if show_buttons else PAD
+    top = BUTTONS_END + 14 if show_buttons else PAD
     usable = h - top - PAD
 
     def layout(section):
@@ -1228,7 +1260,8 @@ def render_panel(frame: np.ndarray, sections: List[Dict],
         y += LINE_H
 
     if show_buttons:
-        for (x0, y0, x1, y1), color, label in BUTTONS.values():
+        for name, ((x0, y0, x1, y1), color, label) in BUTTONS.items():
+            label = (button_labels or {}).get(name, label)
             cv2.rectangle(panel, (x0, y0), (x1, y1), color, -1)
             cv2.rectangle(panel, (x0, y0), (x1, y1), (210, 210, 210), 1)
             tw = _text_width(label, 0.52)
@@ -1362,6 +1395,15 @@ OVERHANG_WEIGHT = 0.3
 # when deciding which spots belong together.
 SESSION_GAP_S = 3600.0
 OLDER_SESSION_WEIGHT = 0.25
+# Weight of consistent older-session spots in the fit itself. At full weight
+# a long history outvotes the current session, so new spots barely move the
+# model after a small shift of the board or a recalibration. Replaying the
+# Oct 31 session on top of 17 older spots: median miss after 1-6 new spots
+# averaged 6.1 mm at 1.0 and 3.7 mm at 0.1 (2 mm from the 6th spot).
+OLDER_SESSION_FIT_WEIGHT = 0.1
+# With too few spots for the model, two spots belong to one setup when their
+# robot distance matches their true board distance within this.
+PAIR_RIGID_TOL_M = 0.015
 
 
 def _session_factors(records: List[Dict], order: List[int]) -> np.ndarray:
@@ -1532,15 +1574,17 @@ def learn_board_to_robot(records: List[Dict], board_cm=None, pose_prior=None) ->
             break
         inliers = refined
     # Only now fit the flexible arm model, to the consistent spots.
-    params = _fit_arm_model(board[inliers], target[inliers, :2], weights[inliers], pose_prior)
-    zcoef = _fit_z_plane(board[inliers], z0[inliers], weights[inliers])
+    session_fit = np.where(session < 1.0, OLDER_SESSION_FIT_WEIGHT, 1.0)
+    fit_w = weights * session_fit
+    params = _fit_arm_model(board[inliers], target[inliers, :2], fit_w[inliers], pose_prior)
+    zcoef = _fit_z_plane(board[inliers], z0[inliers], fit_w[inliers])
 
     # Typical prediction error at a new spot (leave-one-out over inliers).
     loo = []
     if len(inliers) >= 4:
         for k in inliers:
             rest = [i for i in inliers if i != k]
-            p = _fit_arm_model(board[rest], target[rest, :2], weights[rest], pose_prior)
+            p = _fit_arm_model(board[rest], target[rest, :2], fit_w[rest], pose_prior)
             loo.append(float(np.linalg.norm(_arm_model_xy(p, board[k:k + 1])[0]
                                             - target[k, :2])))
     model = {
@@ -1551,6 +1595,7 @@ def learn_board_to_robot(records: List[Dict], board_cm=None, pose_prior=None) ->
         "loo_mm": float(np.median(loo) * 1000.0) if loo else None,
         "loo_each_mm": [v * 1000.0 for v in loo],
         "spots_cm": board[inliers] * 100.0,
+        "spot_weights": session_fit[inliers],
     }
     # Local layer: what the smooth model still misses at each taught spot.
     predicted = np.column_stack([_arm_model_xy(params, board[inliers]),
@@ -1559,8 +1604,43 @@ def learn_board_to_robot(records: List[Dict], board_cm=None, pose_prior=None) ->
     return model
 
 
+def _correction_field(where: np.ndarray, deltas: np.ndarray, board_xy_cm) -> np.ndarray:
+    """Correction to the corner map at a board point from taught corrections.
+
+    Two or more spread-out spots fit a shift plus a small rotation of the
+    board (a moved or turned board is the usual error), so even two spots
+    correct the whole board, not just their surroundings. One spot is a pure
+    shift. A local layer, fading with distance, makes each spot replay
+    exactly."""
+    b = np.asarray(board_xy_cm, float)
+    if len(where) >= 2 and np.max(np.linalg.norm(where - where[0], axis=1)) >= 5.0:
+        c = where.mean(0)
+        n = len(where)
+        # delta_xy = t + omega * perp(b - c): linear in (tx, ty, omega).
+        A = np.vstack([np.column_stack([np.ones(n), np.zeros(n), -(where[:, 1] - c[1])]),
+                       np.column_stack([np.zeros(n), np.ones(n), where[:, 0] - c[0]])])
+        tx, ty, omega = np.linalg.lstsq(A, np.concatenate([deltas[:, 0], deltas[:, 1]]),
+                                        rcond=None)[0]
+        z = float(deltas[:, 2].mean())
+
+        def smooth(q):
+            q = np.atleast_2d(q)
+            return np.column_stack([tx - omega * (q[:, 1] - c[1]),
+                                    ty + omega * (q[:, 0] - c[0]),
+                                    np.full(len(q), z)])
+    else:
+        mean = deltas.mean(0)
+
+        def smooth(q):
+            return np.tile(mean, (len(np.atleast_2d(q)), 1))
+    residuals = deltas - smooth(where)
+    w = 1.0 / (np.sum((where - b) ** 2, axis=1) + CORRECTION_RADIUS_CM ** 2)
+    fade = float(np.max(CORRECTION_RADIUS_CM ** 2 * w))
+    return smooth(b)[0] + fade * (w[:, None] * residuals).sum(0) / w.sum()
+
+
 def _blend_loo_mm(corrections) -> Optional[float]:
-    """Median leave-one-out XY error of the corner map + blended corrections."""
+    """Median leave-one-out XY error of the corner map + correction field."""
     if len(corrections) < 4:
         return None
     where = np.array([c[0] for c in corrections])
@@ -1568,8 +1648,7 @@ def _blend_loo_mm(corrections) -> Optional[float]:
     errs = []
     for k in range(len(corrections)):
         rest = np.arange(len(corrections)) != k
-        w = 1.0 / (np.sum((where[rest] - where[k]) ** 2, axis=1) + CORRECTION_RADIUS_CM ** 2)
-        guess = (w[:, None] * deltas[rest]).sum(0) / w.sum()
+        guess = _correction_field(where[rest], deltas[rest], where[k])
         errs.append(float(np.linalg.norm(guess[:2] - deltas[k][:2])))
     return float(np.median(errs) * 1000.0)
 
@@ -1580,10 +1659,12 @@ def learned_xyz(model: Dict, board_xy_cm, tool_height_cm: float) -> np.ndarray:
     z = float(np.array([b[0, 0] / 100.0, b[0, 1] / 100.0, 1.0]) @ model["zcoef"])
     xyz = np.array([xy[0], xy[1], z + tool_height_cm / 100.0])
     d2 = np.sum((model["spots_cm"] - b) ** 2, axis=1)
-    w = 1.0 / (d2 + CORRECTION_RADIUS_CM ** 2)
+    near = 1.0 / (d2 + CORRECTION_RADIUS_CM ** 2)
     # Fade the local layer out away from taught spots so it never adds a
     # far-away spot's quirk to the smooth model.
-    fade = float(np.max(CORRECTION_RADIUS_CM ** 2 * w))
+    fade = float(np.max(CORRECTION_RADIUS_CM ** 2 * near))
+    # Near both, a current-session spot outweighs an older one.
+    w = model.get("spot_weights", 1.0) * near
     return xyz + fade * (w[:, None] * model["residuals"]).sum(0) / w.sum()
 
 
@@ -1596,6 +1677,10 @@ def learned_model_for(mapping: Dict) -> Optional[Dict]:
 # model predicts gripper/shoulder contact below ~12 cm, but the real arm
 # reaches there, so that is only a preflight warning.
 ARM_MIN_RADIUS_M = 0.085
+# The "teach here" marker keeps further out: spots near the base are hard to
+# reach pointing down (the gripper meets the shoulder below ~12 cm), and a
+# spot there teaches little about the rest of the board.
+TEACH_MIN_RADIUS_M = 0.12
 
 
 def suggest_teach_spot(spots_cm, board_cm, margin_cm: float = 3.0, predict=None):
@@ -1609,17 +1694,36 @@ def suggest_teach_spot(spots_cm, board_cm, margin_cm: float = 3.0, predict=None)
     grid = np.column_stack([xs.ravel(), ys.ravel()])
     if predict is not None:
         reach = np.array([np.hypot(*predict(b)[:2]) for b in grid])
-        if np.any(reach >= ARM_MIN_RADIUS_M):
-            grid = grid[reach >= ARM_MIN_RADIUS_M]
+        for min_radius in (TEACH_MIN_RADIUS_M, ARM_MIN_RADIUS_M):
+            if np.any(reach >= min_radius):
+                grid = grid[reach >= min_radius]
+                break
     if spots_cm is None or len(spots_cm) == 0:
         return tuple(grid[len(grid) // 2]), float("inf")
-    gaps = np.min(np.linalg.norm(grid[:, None, :] - np.asarray(spots_cm)[None, :, :], axis=2), axis=1)
-    k = int(np.argmax(gaps))
+    spots = np.asarray(spots_cm, float)
+    gaps = np.min(np.linalg.norm(grid[:, None, :] - spots[None, :, :], axis=2), axis=1)
+    # Spread the spots over the whole reachable area: split it into quarters
+    # and teach in the one with the fewest spots, at its emptiest point. The
+    # farthest point alone ran along one empty board edge for several spots
+    # in a row. Only quarters with a real hole (at least half the largest)
+    # compete, so a covered quarter never beats a big gap elsewhere.
+    mid_x, mid_y = np.median(grid[:, 0]), np.median(grid[:, 1])
+
+    def quarter(points):
+        return (points[:, 0] >= mid_x).astype(int) * 2 + (points[:, 1] >= mid_y).astype(int)
+
+    grid_q = quarter(grid)
+    counts = np.bincount(quarter(spots), minlength=4)
+    holes = {k: gaps[grid_q == k].max() for k in range(4) if np.any(grid_q == k)}
+    eligible = [k for k, hole in holes.items() if hole >= 0.5 * gaps.max()]
+    best_q = min(eligible, key=lambda k: (counts[k], -holes[k]))
+    candidates = np.where(grid_q == best_q)[0]
+    k = int(candidates[np.argmax(gaps[candidates])])
     return tuple(grid[k]), float(gaps[k])
 
 
 def correction_at(board_xy_cm, mapping: Dict) -> np.ndarray:
-    """Inverse-distance blend of taught pick corrections at a board point."""
+    """Correction field of the taught pick corrections at a board point."""
     corrections = mapping.get("corrections") or []
     if not corrections:
         return np.zeros(3)
@@ -1633,11 +1737,9 @@ def correction_at(board_xy_cm, mapping: Dict) -> np.ndarray:
         corrections = [c for c in corrections if c[2] is None or c[2] == side]
     if not corrections:
         return np.zeros(3)
-    where = np.array([c[0] for c in corrections])
-    deltas = np.array([c[1] for c in corrections])
-    d2 = np.sum((where - np.asarray(board_xy_cm, float)) ** 2, axis=1)
-    weights = 1.0 / (d2 + CORRECTION_RADIUS_CM ** 2)
-    return (weights[:, None] * deltas).sum(axis=0) / weights.sum()
+    where = np.array([c[0] for c in corrections], float)
+    deltas = np.array([c[1] for c in corrections], float)
+    return _correction_field(where, deltas, board_xy_cm)
 
 
 def board_to_robot_xyz(board_xy_cm, tool_height_cm: float, mapping: Dict):
@@ -1716,12 +1818,19 @@ def load_pick_corrections(path: str, mapping: Dict) -> None:
                 active[side] = consistent
                 mapping.setdefault("unused_models", {})[side] = model
         elif side_records:
-            # Too few spots for the model: blend only the corrections that
-            # agree with the newest one (within 2 cm), never a moved setup's.
+            # Too few spots for the model: use only the corrections from the
+            # newest one's setup, never a moved setup's. A pair belongs
+            # together when the robot distance between the two taught
+            # targets matches their true board distance (a rigid board).
             newest = max(range(len(idx)), key=lambda k: side_records[k].get("saved_at", ""))
-            ref = corrections[idx[newest]][1]
-            keep = [k for k in range(len(idx))
-                    if np.linalg.norm(corrections[idx[k]][1][:2] - ref[:2]) < 0.02]
+            ref_b, ref_t = corrections[idx[newest]][0], side_records[newest]["robot_xyz_m"]
+
+            def same_setup(k):
+                board_m = np.linalg.norm(corrections[idx[k]][0] - ref_b) / 100.0
+                robot_m = np.linalg.norm(np.subtract(side_records[k]["robot_xyz_m"][:2], ref_t[:2]))
+                return abs(robot_m - board_m) < PAIR_RIGID_TOL_M
+
+            keep = [k for k in range(len(idx)) if same_setup(k)]
             active[side] = [corrections[idx[k]] for k in keep]
             stale[side] = [side_records[k] for k in range(len(idx)) if k not in keep]
     mapping["learned"] = learned
@@ -1818,6 +1927,48 @@ def delete_ignored_corrections(path: str, mapping: Dict) -> int:
     return removed
 
 
+def old_session_records(records: List[Dict]) -> List[Dict]:
+    """Spots taught before the newest session (both gripper sides).
+
+    The newest session is the run of spots, back from the newest one, with no
+    gap longer than SESSION_GAP_S. Spots without a readable time count as old."""
+    from datetime import datetime
+
+    def when(r):
+        try:
+            return datetime.strptime(r.get("saved_at", ""), "%Y-%m-%dT%H:%M:%S%z").timestamp()
+        except ValueError:
+            return None
+
+    timed = sorted(((when(r), r) for r in records if when(r) is not None),
+                   key=lambda item: item[0], reverse=True)
+    current, previous = set(), None
+    for t, r in timed:
+        if previous is not None and previous - t > SESSION_GAP_S:
+            break
+        current.add(id(r))
+        previous = t
+    return [r for r in records if id(r) not in current]
+
+
+def delete_old_sessions(path: str, mapping: Dict) -> Tuple[int, int]:
+    """Delete spots from earlier sessions, keeping the newest session.
+
+    The file is copied to <path>.bak first, so the deletion can be undone by
+    restoring it. Returns (removed, kept)."""
+    records = mapping.get("correction_records", [])
+    old = {id(r) for r in old_session_records(records)}
+    if not old:
+        return 0, len(records)
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as src, open(path + ".bak", "w", encoding="utf-8") as dst:
+            dst.write(src.read())
+    kept = [r for r in records if id(r) not in old]
+    _write_corrections(path, kept, global_offset(mapping))
+    load_pick_corrections(path, mapping)
+    return len(old), len(kept)
+
+
 def preview_ik_target(server_url: str, xyz, timeout: float = 60.0,
                       orientation: str = "downwards", duration: float = 5.0,
                       jaw_side: str = "base") -> Dict:
@@ -1839,6 +1990,54 @@ def preview_ik_target(server_url: str, xyz, timeout: float = 60.0,
             f"{xyz[2]:.4f}) m, orientation={orientation}: "
             f"{detail or exc.reason}"
         ) from exc
+
+
+def check_reach(server_url: str, xyz, what: str, duration: float = 5.0,
+                jaw_side: str = "base") -> Dict:
+    """preview_ik_target, with a rejection reworded to name the target and
+    say what to do. The full IK reason stays in the terminal."""
+    try:
+        return preview_ik_target(server_url, xyz, orientation="downwards",
+                                 duration=duration, jaw_side=jaw_side)
+    except RuntimeError as exc:
+        detail = str(exc)
+        print(f"{what}: {detail}", file=sys.stderr)
+        radius_cm = float(np.hypot(xyz[0], xyz[1])) * 100.0
+        angle_deg = float(np.degrees(np.arctan2(xyz[1], xyz[0])))
+        where = f"It is {radius_cm:.0f} cm from the base at {angle_deg:+.0f} deg"
+        miss = re.search(r"IK error ([0-9.]+)mm exceeds ([0-9.]+)mm", detail)
+        if miss is not None:
+            raise RuntimeError(
+                f"{what} is out of the arm's reach: the closest pose misses it by "
+                f"{miss.group(1)} mm (limit {miss.group(2)} mm). {where}; move it a few cm "
+                "further from the base or more in front of the arm.") from exc
+        if "too close to the base" in detail:
+            raise RuntimeError(f"{what} is too close to the arm's base. {where}; "
+                               "the arm needs 8 cm or more.") from exc
+        reason = re.search(r'"error": "([^"]*)"', detail)
+        if reason is None:
+            raise
+        raise RuntimeError(f"{what} cannot be reached: {reason.group(1)}") from exc
+
+
+def aim_arm(server_url: str, xyz, duration: float, jaw_side: str, direct: bool) -> str:
+    """Hover the open gripper, pointing down, at xyz without gripping.
+
+    The first aim comes down from above the target like a pick. Later aims
+    (direct=True) follow a nudge from the hover pose nearby, so they move
+    straight there instead of rising to the approach height and back."""
+    body = {"x": xyz[0], "y": xyz[1], "z": xyz[2],
+            "orientation": "downwards", "fixed_jaw_side": jaw_side,
+            "duration": min(duration, 1.2) if direct else duration,
+            "pre_gripper": "hold" if direct else "open", "post_gripper": "hold",
+            "retreat": False}
+    if direct:
+        body["approach_z"] = xyz[2]
+    result = _ik_post(server_url, "/coordinate_action", body)
+    if not result.get("ok", False):
+        raise RuntimeError(result.get("error", "Aim command was rejected"))
+    _wait_for_pipeline(server_url)
+    return "aimed"
 
 
 def preview_pick_and_drop(server_url: str, pick_xyz, drop_xyz,
@@ -1863,6 +2062,66 @@ def corner2_drop_xy(board_cm, object_length_cm: float, object_width_cm: float):
     if inset * 2.0 >= min(board_x, board_y):
         raise ValueError("Object is too large to place safely inside the board corner")
     return float(board_x - inset), float(inset)
+
+
+# ---- colour-based place spots ----------------------------------------------
+# Each colour can have its own place spot (object centre, board cm). Colours
+# without one go to the default spot, or to Corner 2 when no default is set.
+
+def _board_spot(value) -> Tuple[float, float]:
+    x, y = (float(v) for v in value)
+    if not (np.isfinite(x) and np.isfinite(y)):
+        raise ValueError(f"place spot {value!r} is not finite")
+    return x, y
+
+
+def load_color_places(path: str) -> Dict:
+    """Load {"default": [x, y] | null, "colors": {name: [x, y]}}; a missing
+    file means every colour goes to Corner 2."""
+    if not os.path.exists(path):
+        return {"default": None, "colors": {}}
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    default = data.get("default")
+    return {
+        "default": None if default is None else _board_spot(default),
+        "colors": {str(name).strip().lower(): _board_spot(xy)
+                   for name, xy in (data.get("colors") or {}).items()},
+    }
+
+
+def save_color_places(path: str, places: Dict) -> None:
+    def rounded(xy):
+        return [round(xy[0], 2), round(xy[1], 2)]
+    data = {
+        "units": "board cm (x, y) of the placed object's centre; "
+                 "default null = Corner 2",
+        "default": None if places["default"] is None else rounded(places["default"]),
+        "colors": {name: rounded(xy) for name, xy in sorted(places["colors"].items())},
+    }
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def color_place_key(color: str, places: Dict) -> Optional[str]:
+    """Colour entry used for an object, or None for the default. A dull
+    "dark green" object uses "green" when only that is set."""
+    if color in places["colors"]:
+        return color
+    if color.startswith("dark ") and color[5:] in places["colors"]:
+        return color[5:]
+    return None
+
+
+def drop_target_for(obj: Dict, board_cm, places: Dict) -> Tuple[Tuple[float, float], str]:
+    """Place centre (board cm) for an object and a label naming where it goes."""
+    key = color_place_key(obj['color'], places)
+    if key is not None:
+        return places["colors"][key], f"{key} spot"
+    if places["default"] is not None:
+        return places["default"], "default spot"
+    return corner2_drop_xy(board_cm, obj['length_cm'], obj['width_cm']), "Corner 2"
 
 
 def _ik_post(server_url: str, path: str, body: Dict, timeout: float = 60.0) -> Dict:
@@ -1945,14 +2204,14 @@ def _wait_for_pipeline(server_url: str, timeout: float = 150.0) -> None:
 
 
 def execute_pick_and_place(server_url: str, pick_xyz, place_xyz,
-                           duration: float = 5.0, jaw_side: str = "base") -> str:
-    """Pick one object, then place it at the size-adjusted Corner 2 target."""
+                           duration: float = 5.0, jaw_side: str = "base",
+                           place_label: str = "Corner 2", preflight: bool = True) -> str:
+    """Pick one object, then place it at its colour's spot or the default."""
     # Check both locations before gripping so an unreachable destination cannot
     # leave the arm holding an object without a valid drop path.
-    preview_ik_target(server_url, pick_xyz, orientation="downwards", duration=duration,
-                      jaw_side=jaw_side)
-    preview_ik_target(server_url, place_xyz, orientation="downwards", duration=duration,
-                      jaw_side=jaw_side)
+    if preflight:
+        check_reach(server_url, pick_xyz, "The pick", duration, jaw_side)
+        check_reach(server_url, place_xyz, f"The place spot ({place_label})", duration, jaw_side)
     pick = {"x": pick_xyz[0], "y": pick_xyz[1], "z": pick_xyz[2],
             "orientation": "downwards", "fixed_jaw_side": jaw_side,
             "duration": duration,
@@ -1970,7 +2229,56 @@ def execute_pick_and_place(server_url: str, pick_xyz, place_xyz,
     if not result.get("ok", False):
         raise RuntimeError(result.get("error", "Place command was rejected"))
     _wait_for_pipeline(server_url)
-    return "Pick and place completed at Corner 2."
+    return f"Pick and place completed at {place_label}."
+
+
+# ---- stacker mode ------------------------------------------------------------
+
+def stack_base_at(objects: List[Dict], click_px) -> Optional[Dict]:
+    """The object whose outline contains the clicked pixel, if any.
+
+    Tested in the image: a click on an object's top face maps to a board
+    point several cm from its measured centre (the top is 4 cm up), so a
+    distance test in board cm misses it."""
+    point = (float(click_px[0]), float(click_px[1]))
+    return next((o for o in objects
+                 if cv2.pointPolygonTest(o['contour'], point, False) >= 0), None)
+
+
+def plan_stack(objects: List[Dict], spot_cm, base: Optional[Dict] = None,
+               movable=lambda obj: True):
+    """Order the visible objects for a stack at spot_cm, nearest first.
+
+    base (an object already at the spot) is not moved. Returns
+    [(obj, level)], where level 0 sits on the board."""
+    spot = np.asarray(spot_cm, float)
+    movers = sorted((o for o in objects if o is not base and movable(o)),
+                    key=lambda o: float(np.hypot(*(np.asarray(o['board_xy_cm']) - spot))))
+    first_level = 1 if base is not None else 0
+    return [(obj, first_level + i) for i, obj in enumerate(movers)]
+
+
+def execute_stack(server_url: str, jobs, duration: float, jaw_side: str,
+                  progress: Dict, cancel) -> str:
+    """Run [(label, pick_xyz, place_xyz)] in order onto one stack.
+
+    Every pick and the top of the stack are checked before anything moves,
+    so an unreachable object cannot leave a half-built stack. cancel (an
+    Event) stops after the object being moved."""
+    progress["text"] = f"Stacker: checking {len(jobs)} picks and the stack top..."
+    for label, pick_xyz, _ in jobs:
+        check_reach(server_url, pick_xyz, f"The pick of the {label.split(' ->')[0]}",
+                    duration, jaw_side)
+    check_reach(server_url, jobs[-1][2], f"The stack top (level {len(jobs)})",
+                duration, jaw_side)
+    for i, (label, pick_xyz, place_xyz) in enumerate(jobs, start=1):
+        if cancel.is_set():
+            return f"Stacker stopped after {i - 1} of {len(jobs)} objects."
+        progress["text"] = (f"Stacker {i}/{len(jobs)}: {label}  "
+                            "(b stops after this one, s kills now)")
+        execute_pick_and_place(server_url, pick_xyz, place_xyz, duration, jaw_side,
+                               place_label="the stack", preflight=False)
+    return f"Stacker done: {len(jobs)} objects stacked."
 
 
 def lock_camera(cap: cv2.VideoCapture) -> None:
@@ -2011,8 +2319,14 @@ def main() -> int:
                         help="object height above the board in cm (default: 4.0)")
     parser.add_argument("--grasp-height", type=float, default=1.0,
                         help="gripper target height above the board in cm (default: 1.0; lower-side grasp)")
+    parser.add_argument("--stack-clearance", type=float, default=0.5,
+                        help="stacker: release each object this far (cm) above the one "
+                             "below it (default: 0.5)")
     parser.add_argument("--move-duration", type=float, default=4.0,
                         help="seconds per arm motion (default: 4; lower is faster)")
+    parser.add_argument("--aim-clearance", type=float, default=1.0,
+                        help="aim (f): hover the gripper this far (cm) above the object "
+                             "top (default: 1.0)")
     parser.add_argument("--feedback-step-xy-mm", type=float, default=5.0,
                         help="drop-target feedback step for X/Y in mm (default: 5)")
     parser.add_argument("--feedback-step-z-mm", type=float, default=2.0,
@@ -2031,6 +2345,9 @@ def main() -> int:
                         help="enable hardware pick/place; select an object and press a to run")
     parser.add_argument("--ik-corrections", default=DEFAULT_IK_CORRECTIONS_FILE,
                         help="taught pick/drop corrections (press g to add one)")
+    parser.add_argument("--color-places", default=DEFAULT_COLOR_PLACES_FILE,
+                        help="per-colour place spots in board cm (press d to set one); "
+                             "other colours go to the default spot or Corner 2")
     parser.add_argument("--clear-ik-corrections", action="store_true",
                         help="start without the saved taught corrections")
     parser.add_argument("--learning-mode", choices=("on", "off"), default="on",
@@ -2076,7 +2393,8 @@ def main() -> int:
                         help="frames an object must persist before it is listed "
                              "(default: 4; raise to suppress more flicker)")
     args = parser.parse_args()
-    for option in ("calib_file", "height_calib_file", "ik_mapping", "ik_corrections"):
+    for option in ("calib_file", "height_calib_file", "ik_mapping", "ik_corrections",
+                   "color_places"):
         value = getattr(args, option)
         if value == parser.get_default(option) and not os.path.isabs(value):
             setattr(args, option, os.path.join(REPO_ROOT, value))
@@ -2090,6 +2408,10 @@ def main() -> int:
     if (not np.isfinite(args.grasp_height) or args.grasp_height < 0
             or args.grasp_height > args.object_height):
         parser.error("--grasp-height must be finite and between 0 and --object-height")
+    if not np.isfinite(args.stack_clearance) or not (0.0 <= args.stack_clearance <= 3.0):
+        parser.error("--stack-clearance must be between 0 and 3 cm")
+    if not np.isfinite(args.aim_clearance) or not (0.0 <= args.aim_clearance <= 10.0):
+        parser.error("--aim-clearance must be between 0 and 10 cm")
     if not np.isfinite(args.move_duration) or not (0.2 <= args.move_duration <= 10.0):
         parser.error("--move-duration must be between 0.2 and 10 seconds")
     if (not np.isfinite(args.feedback_step_xy_mm) or args.feedback_step_xy_mm <= 0
@@ -2116,6 +2438,17 @@ def main() -> int:
         print(f"Loaded {len(ik_mapping['corrections'])} taught pick/drop corrections "
               f"from {args.ik_corrections}")
         ik_mapping["jaw_side"] = args.gripper_motor_side
+    color_places = {"default": None, "colors": {}}
+    if args.ik_preview or args.ik_pick_place:
+        try:
+            color_places = load_color_places(args.color_places)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            parser.error(f"cannot load colour place spots {args.color_places!r}: {exc}")
+        spots = ", ".join(f"{name} ({x:.1f}, {y:.1f})"
+                          for name, (x, y) in color_places["colors"].items()) or "none"
+        print(f"Colour place spots (board cm): {spots}; other colours -> "
+              + ("default spot ({:.1f}, {:.1f})".format(*color_places["default"])
+                 if color_places["default"] is not None else "Corner 2"))
 
     # DirectShow is the backend used by cv_testing.py for this external camera.
     # OpenCV's default backend on Windows (often MSMF) can open the device but
@@ -2281,13 +2614,18 @@ def main() -> int:
         preview_executor = ThreadPoolExecutor(max_workers=1)
         preview_future = None
         preview_task = None
+        preview_place_label = "Corner 2"
         control_executor = ThreadPoolExecutor(max_workers=2)
         control_futures = []
         latest_control_id = 0
-        pending_control = {"action": None}
+        pending_control = {"action": None, "image_click": None}
 
         def on_detector_mouse(event, x, y, flags, param):
             if event != cv2.EVENT_LBUTTONUP:
+                return
+            if x < frame.shape[1]:
+                # Camera image: used to set a place spot (d, then click).
+                pending_control["image_click"] = (x, y)
                 return
             # Buttons are in the right-hand side panel, aligned with the top.
             button = panel_button_at(x, y, frame.shape[1])
@@ -2304,6 +2642,20 @@ def main() -> int:
         learning = args.learning_mode == "on"
         # Board points used by the last preview/cycle, for saving corrections.
         last_targets = {"pick": None, "drop": None}
+        # Colour whose place spot the next board click sets ("" = default
+        # spot), or None when not setting one.
+        place_spot_for = None
+        # Stacker: waiting for the stack click, the running stack's spot
+        # (board cm), the worker's progress text and its stop request.
+        stack_click = False
+        stack_spot = None
+        stack_progress = {"text": ""}
+        stack_cancel = threading.Event()
+        # Aim (f): {"kind": "pick"/"drop", "board_xy": spot, "sent": nudge of
+        # the last aim move or None} while the arm hovers over a target.
+        aim = None
+        # DELETE OLD SPOTS needs a second click before this time.
+        forget_confirm_until = None
         workspace_mask = make_workspace_mask(frame.shape, corners, WORKSPACE_INSET_PX)
 
         def selected_obj():
@@ -2321,10 +2673,17 @@ def main() -> int:
             if preview_future is not None and preview_future.done():
                 try:
                     result = preview_future.result()
-                    if preview_task == "pick_place":
+                    if preview_task in ("pick_place", "stack"):
                         ik_status = result
+                    elif preview_task == "spot_check":
+                        ik_status = "Place spot saved and reachable."
+                    elif preview_task == "aim":
+                        ik_status = (f"Aiming over the {aim['kind']} spot: nudge until the "
+                                     "jaws are centred (the arm follows), then g saves. "
+                                     "f stops aiming." if aim else "Aim stopped.")
                     elif preview_task == "preview_pair":
-                        ik_status = "Pick and Corner 2 drop reachable (downwards)."
+                        ik_status = (f"Pick and {preview_place_label} drop reachable "
+                                     "(downwards).")
                         notes = [f"{name}: {item['label']}"
                                  for name in ("pick", "drop")
                                  for item in result.get(name, {}).get("preflight", [])
@@ -2337,14 +2696,39 @@ def main() -> int:
                         ik_status = ("Reachable preview: " + "; ".join(errors))[:100]
                     print(ik_status)
                 except Exception as exc:
-                    task_label = "Pick/place" if preview_task == "pick_place" else "IK preview"
+                    task_label = {"pick_place": "Pick/place", "stack": "Stacker",
+                                  "aim": "Aim", "spot_check": "Place spot check"
+                                  }.get(preview_task, "IK preview")
+                    if preview_task == "aim":
+                        aim = None
                     error_detail = str(exc)
                     # Keep the full IK reason in the terminal. The status pane
                     # is narrow, and truncating this at 70 chars hid the
                     # reach-check details needed to diagnose rejected targets.
                     ik_status = f"{task_label} failed: {error_detail}"
+                    if preview_task == "spot_check":
+                        ik_status = f"Saved, but WARNING: {error_detail} Press d to set it again."
                     print(ik_status, file=sys.stderr)
                 preview_future = None
+                stack_spot = None
+            elif preview_future is not None and preview_task == "stack":
+                ik_status = stack_progress["text"] + (
+                    "  - stopping after this object" if stack_cancel.is_set() else "")
+            # Aim: whenever the arm is idle and the nudge differs from the
+            # last aim, move to the nudged hover point. Several quick nudges
+            # collapse into one move.
+            if aim is not None and preview_future is None and not control_futures:
+                feedback_m = pick_feedback_m if aim["kind"] == "pick" else drop_feedback_m
+                if aim["sent"] is None or not np.array_equal(aim["sent"], feedback_m):
+                    hover = np.array(board_to_robot_xyz(
+                        aim["board_xy"], args.object_height + args.aim_clearance,
+                        ik_mapping)) + feedback_m
+                    preview_future = preview_executor.submit(
+                        aim_arm, args.ik_url, tuple(float(v) for v in hover),
+                        args.move_duration, jaw_side, aim["sent"] is not None)
+                    preview_task = "aim"
+                    aim["sent"] = feedback_m.copy()
+                    ik_status = f"Aim: moving over the {aim['kind']} spot..."
 
             remaining_controls = []
             for control_id, action, future in control_futures:
@@ -2425,6 +2809,11 @@ def main() -> int:
                     "swatch": SWATCH_BGR.get(obj['color'], (128, 128, 128)),
                     "highlight": is_selected,
                 }
+                if args.ik_pick_place:
+                    place_key = color_place_key(obj['color'], color_places)
+                    row["text"] += "  -> " + (
+                        f"{place_key} spot" if place_key is not None else
+                        "default spot" if color_places["default"] is not None else "Corner 2")
                 if too_close:
                     reach_cm = np.hypot(*obj['robot_xyz_m'][:2]) * 100.0
                     row["text"] += (f"  - too close to the arm ({reach_cm:.1f} cm < "
@@ -2526,6 +2915,40 @@ def main() -> int:
                              f"Z {global_offset(ik_mapping)[2] * 1000:+.0f}",
                      "color": WARN_COLOR if np.any(global_offset(ik_mapping)) else DIM_COLOR},
                 ], "priority": 4})
+
+                # Place spots: a marker on the board and one row per colour.
+                spots = [(name, xy, SWATCH_BGR.get(name, (128, 128, 128)))
+                         for name, xy in sorted(color_places["colors"].items())]
+                if color_places["default"] is not None:
+                    spots.append(("default", color_places["default"], (255, 255, 255)))
+                place_rows = []
+                for name, (sx, sy), swatch in spots:
+                    mx, my = (int(v) for v in transform_points(H_inv, [(sx, sy)])[0])
+                    cv2.drawMarker(output, (mx, my), (0, 0, 0), cv2.MARKER_TILTED_CROSS, 24, 5)
+                    cv2.drawMarker(output, (mx, my), swatch, cv2.MARKER_TILTED_CROSS, 24, 2)
+                    cv2.putText(output, f"{name} place", (mx + 12, my + 18), FONT, 0.5,
+                                (0, 0, 0), 4, cv2.LINE_AA)
+                    cv2.putText(output, f"{name} place", (mx + 12, my + 18), FONT, 0.5,
+                                (255, 255, 255), 1, cv2.LINE_AA)
+                    place_rows.append({"text": f"{name} -> ({sx:.1f}, {sy:.1f}) cm",
+                                       "swatch": swatch})
+                if color_places["default"] is None:
+                    place_rows.append({"text": "other colours -> Corner 2", "color": DIM_COLOR})
+                if place_spot_for is not None:
+                    target = f"{place_spot_for} objects" if place_spot_for else "other colours"
+                    place_rows.insert(0, {"text": f"Click the image (on or off the board) to set "
+                                                  f"the place spot for {target} (d cancels)",
+                                          "color": WARN_COLOR})
+                sections.append({"title": "Place spots (d set, D clear)", "rows": place_rows,
+                                 "priority": 5 if place_spot_for is not None else 3})
+                if stack_spot is not None:
+                    mx, my = (int(v) for v in transform_points(H_inv, [stack_spot])[0])
+                    cv2.circle(output, (mx, my), 14, (0, 0, 0), 5)
+                    cv2.circle(output, (mx, my), 14, (0, 255, 255), 2)
+                    cv2.putText(output, "stack", (mx + 18, my + 5), FONT, 0.6, (0, 0, 0), 4,
+                                cv2.LINE_AA)
+                    cv2.putText(output, "stack", (mx + 18, my + 5), FONT, 0.6,
+                                (0, 255, 255), 1, cv2.LINE_AA)
             key_rows = []
             if args.ik_preview or args.ik_pick_place:
                 key_rows.append("1-9 select   p preview" +
@@ -2535,15 +2958,25 @@ def main() -> int:
                 key_rows.append("m cycles PICK / DROP / ALL (ALL shifts every target, saved)")
                 key_rows.append(f"Shift + l/j/i/k/u/o = fine {args.feedback_fine_step_mm:g} mm steps")
                 key_rows.append("t learning mode on/off")
+                key_rows.append("f aim: hover over the selected object; nudges move the arm "
+                                "live (f again stops)")
                 if learning:
                     key_rows.append("g save spot (no nudge = confirm it)   Shift+G delete ignored")
                 key_rows.append("w switch gripper side")
+                key_rows.append("d + click board: place spot for selected colour "
+                                "(none selected = other colours)   D clear it")
+                key_rows.append("b + click: stack every visible object there "
+                                "(b again stops after the current one)")
             key_rows.append("c recalibrate   q / Esc quit")
             sections.append({"title": "Keys", "rows": [{"text": r, "color": DIM_COLOR}
                                                         for r in key_rows],
                              "priority": 1})
 
-            panel = render_panel(output, sections, show_buttons=args.ik_pick_place)
+            forget_armed = (forget_confirm_until is not None
+                            and time.monotonic() < forget_confirm_until)
+            panel = render_panel(
+                output, sections, show_buttons=args.ik_pick_place,
+                button_labels={"forget": "CLICK AGAIN TO DELETE OLD SPOTS"} if forget_armed else None)
             show_canvas(panel)
 
             key = cv2.waitKey(1) & 0xFF
@@ -2554,6 +2987,7 @@ def main() -> int:
             elif key == ord('h'):
                 requested_control = "home"
             if args.ik_pick_place and requested_control in ("stop", "home"):
+                aim = None
                 if control_futures:
                     ik_status = "Wait for the current STOP/HOME command to finish."
                 else:
@@ -2565,6 +2999,29 @@ def main() -> int:
                         control_future = control_executor.submit(home_arm, args.ik_url)
                         ik_status = "Stopping current motion, then moving to home..."
                     control_futures.append((latest_control_id, requested_control, control_future))
+            if args.ik_pick_place and requested_control == "forget":
+                # Two clicks within 4 s: one stray click must not erase learning.
+                old = old_session_records(ik_mapping.get("correction_records", []))
+                total = len(ik_mapping.get("correction_records", []))
+                if not old:
+                    forget_confirm_until = None
+                    ik_status = (f"No old spots: all {total} taught spots are from the "
+                                 "current session.")
+                elif forget_confirm_until is None or time.monotonic() > forget_confirm_until:
+                    forget_confirm_until = time.monotonic() + 4.0
+                    ik_status = (f"Click DELETE OLD SPOTS again within 4 s to delete {len(old)} "
+                                 f"spots from earlier sessions (keeps {total - len(old)} from "
+                                 "this session).")
+                else:
+                    forget_confirm_until = None
+                    try:
+                        removed, kept = delete_old_sessions(args.ik_corrections, ik_mapping)
+                        summary, _ = learning_summary(ik_mapping)
+                        ik_status = (f"Deleted {removed} old spots, kept {kept} (backup: "
+                                     f"{os.path.basename(args.ik_corrections)}.bak). {summary}.")
+                        print(ik_status)
+                    except OSError as exc:
+                        ik_status = f"Could not delete old spots: {exc}"
             if key in (ord('q'), 27):  # q or Esc
                 break
             if (args.ik_preview or args.ik_pick_place) and ord('1') <= key <= ord('9'):
@@ -2587,8 +3044,8 @@ def main() -> int:
                                         for i in range(3))
                     if args.ik_pick_place:
                         try:
-                            drop_xy = corner2_drop_xy(
-                                board_cm, obj['length_cm'], obj['width_cm'])
+                            drop_xy, preview_place_label = drop_target_for(
+                                obj, board_cm, color_places)
                             drop_xyz = board_to_robot_xyz(
                                 drop_xy, args.grasp_height, ik_mapping)
                             drop_xyz = tuple(drop_xyz[i] + drop_feedback_m[i]
@@ -2622,8 +3079,7 @@ def main() -> int:
                 else:
                     obj = selected_obj()
                     try:
-                        drop_xy = corner2_drop_xy(
-                            board_cm, obj['length_cm'], obj['width_cm'])
+                        drop_xy, place_label = drop_target_for(obj, board_cm, color_places)
                         drop_xyz = board_to_robot_xyz(drop_xy, args.grasp_height,
                                                       ik_mapping)
                         pick_xyz = obj['robot_xyz_m']
@@ -2633,14 +3089,16 @@ def main() -> int:
                                          for i in range(3))
                         last_targets["pick"] = obj['board_xy_cm']
                         last_targets["drop"] = drop_xy
+                        aim = None
                         preview_future = preview_executor.submit(
                             execute_pick_and_place, args.ik_url, pick_xyz, drop_xyz,
-                            args.move_duration, jaw_side)
+                            args.move_duration, jaw_side, place_label)
                         preview_task = "pick_place"
-                        ik_status = (f"Pick/place running; Corner 2 drop at "
-                                     f"({drop_xy[0]:.1f}, {drop_xy[1]:.1f}) cm...")
-                        print(f"PICK/PLACE: pick={tuple(round(v, 4) for v in pick_xyz)} m; "
-                              f"Corner 2 drop={drop_xy} cm -> "
+                        ik_status = (f"Pick/place running ({obj['color']}); {place_label} "
+                                     f"drop at ({drop_xy[0]:.1f}, {drop_xy[1]:.1f}) cm...")
+                        print(f"PICK/PLACE: {obj['color']} pick="
+                              f"{tuple(round(v, 4) for v in pick_xyz)} m; "
+                              f"{place_label} drop={drop_xy} cm -> "
                               f"{tuple(round(v, 4) for v in drop_xyz)} m")
                     except (KeyError, ValueError) as exc:
                         ik_status = f"Cannot start pick/place: {str(exc)[:70]}"
@@ -2653,7 +3111,7 @@ def main() -> int:
                 feedback_m = pick_feedback_m if nudge_target == "pick" else drop_feedback_m
                 board_xy = last_targets[nudge_target]
                 if board_xy is None:
-                    ik_status = (f"Run a preview (p) or cycle (a) first, then nudge the "
+                    ik_status = (f"Aim (f), preview (p) or cycle (a) first, then nudge the "
                                  f"{nudge_target} onto the object and press g.")
                 else:
                     # A zero nudge is valid: it confirms the current target
@@ -2684,6 +3142,9 @@ def main() -> int:
                                      f"{summary}.")
                         print(ik_status)
                         feedback_m[:] = 0.0  # now part of the mapping
+                        if aim is not None and aim["kind"] == nudge_target:
+                            aim = None   # this spot is done; aim the next one
+                            ik_status += " Select the next object and press f."
                     except OSError as exc:
                         ik_status = f"Could not save correction: {exc}"
             elif args.ik_pick_place and key == ord('G'):
@@ -2740,7 +3201,10 @@ def main() -> int:
                     feedback_m[axis] += sign * step_mm / 1000.0
                     direction = ("+" if sign > 0 else "-") + "XYZ"[axis]
                     ik_status = (f"{nudge_target.capitalize()} nudged {direction} "
-                                 f"{step_mm:g} mm; applies to the next preview or cycle.")
+                                 f"{step_mm:g} mm; "
+                                 + ("the arm follows." if aim is not None and
+                                    aim["kind"] == nudge_target else
+                                    "applies to the next preview or cycle."))
                     if nudge_target == "all":
                         try:
                             set_global_offset(args.ik_corrections, ik_mapping, feedback_m)
@@ -2750,8 +3214,162 @@ def main() -> int:
                                          f"(total {total} mm, saved).")
                         except OSError as exc:
                             ik_status = f"Could not save the shift: {exc}"
+            if args.ik_pick_place and key == ord('f'):
+                obj = selected_obj()
+                kind = "drop" if nudge_target == "drop" else "pick"
+                if aim is not None:
+                    aim = None
+                    ik_status = "Aim stopped; the arm stays where it is."
+                elif control_futures or preview_future is not None:
+                    ik_status = "Wait for the current arm task to finish before aiming."
+                elif obj is None:
+                    ik_status = "Select an object (1-9), then press f to aim over it."
+                else:
+                    try:
+                        board_xy = (obj['board_xy_cm'] if kind == "pick" else
+                                    drop_target_for(obj, board_cm, color_places)[0])
+                        aim = {"kind": kind, "board_xy": board_xy, "sent": None}
+                        last_targets[kind] = board_xy   # g teaches this spot
+                        stack_click, place_spot_for = False, None
+                    except ValueError as exc:
+                        ik_status = f"Cannot aim: {str(exc)[:70]}"
+            if args.ik_pick_place and key == ord('b'):
+                if preview_task == "stack" and preview_future is not None:
+                    stack_cancel.set()
+                elif stack_click:
+                    stack_click = False
+                    ik_status = "Stacker cancelled."
+                elif control_futures:
+                    ik_status = "Wait for STOP/HOME to finish before stacking."
+                elif preview_future is not None:
+                    ik_status = "IK task is still running; wait for its result."
+                elif not objects:
+                    ik_status = "Stacker: no objects visible."
+                else:
+                    stack_click = True
+                    place_spot_for = None
+                    ik_status = ("Stacker: click where to stack the objects "
+                                 "(on or off the board). b cancels.")
+            if args.ik_pick_place and key in (ord('d'), ord('D')):
+                stack_click = False
+                obj = selected_obj()
+                color = obj['color'] if obj is not None else ""
+                target = f"{color} objects" if color else "other colours"
+                if key == ord('d'):
+                    # d starts setting the spot; d again cancels.
+                    if place_spot_for is None:
+                        place_spot_for = color
+                        ik_status = (f"Click where {target} should be placed "
+                                     "(on or off the board).")
+                    else:
+                        place_spot_for = None
+                        ik_status = "Place spot not changed."
+                else:
+                    place_spot_for = None
+                    if color:
+                        removed = color_places["colors"].pop(color, None) is not None
+                    else:
+                        removed = color_places["default"] is not None
+                        color_places["default"] = None
+                    if removed:
+                        try:
+                            save_color_places(args.color_places, color_places)
+                            ik_status = (f"Place spot for {target} cleared; they now go to "
+                                         + ("Corner 2." if not color or
+                                            color_places["default"] is None
+                                            else "the default spot."))
+                        except OSError as exc:
+                            ik_status = f"Could not save place spots: {exc}"
+                    else:
+                        ik_status = f"No place spot set for {target}."
+            image_click = pending_control["image_click"]
+            pending_control["image_click"] = None
+            if stack_click and image_click is not None:
+                stack_click = False
+                # Clicking an object stacks on it, centred on its measured
+                # position; otherwise the click is a spot on the board plane.
+                base = stack_base_at(objects, image_click)
+                if base is not None:
+                    sx, sy = base['board_xy_cm']
+                else:
+                    sx, sy = (float(v) for v in transform_points(H, [image_click])[0])
+
+                def reachable(o):
+                    return np.hypot(*o['robot_xyz_m'][:2]) >= ARM_MIN_RADIUS_M
+
+                plan = plan_stack(objects, (sx, sy), base, reachable)
+                skipped = len(objects) - len(plan) - (base is not None)
+                if not plan:
+                    ik_status = "Stacker: nothing to move" + (
+                        f" ({skipped} too close to the arm)." if skipped else ".")
+                else:
+                    jobs = []
+                    for obj, level in plan:
+                        pick_xyz = tuple(obj['robot_xyz_m'][i] + pick_feedback_m[i]
+                                         for i in range(3))
+                        # Level n's bottom is n objects up; release slightly
+                        # above the object below so it is not pushed down.
+                        place_h = (args.grasp_height + level * args.object_height
+                                   + (args.stack_clearance if level else 0.0))
+                        place_xyz = board_to_robot_xyz((sx, sy), place_h, ik_mapping)
+                        place_xyz = tuple(place_xyz[i] + drop_feedback_m[i] for i in range(3))
+                        jobs.append((f"{obj['color']} {obj['shape']} -> level {level + 1}",
+                                     pick_xyz, place_xyz))
+                    aim = None
+                    stack_cancel.clear()
+                    stack_progress["text"] = "Stacker starting..."
+                    stack_spot = (sx, sy)
+                    preview_future = preview_executor.submit(
+                        execute_stack, args.ik_url, jobs, args.move_duration, jaw_side,
+                        stack_progress, stack_cancel)
+                    preview_task = "stack"
+                    ik_status = stack_progress["text"]
+                    print(f"STACKER at ({sx:.1f}, {sy:.1f}) cm"
+                          + (f", base {base['color']} {base['shape']} stays" if base else "")
+                          + (f", {skipped} skipped (too close to the arm)" if skipped else ""))
+                    for label, pick_xyz, place_xyz in jobs:
+                        print(f"  {label}: pick {tuple(round(float(v), 4) for v in pick_xyz)} m "
+                              f"-> place {tuple(round(float(v), 4) for v in place_xyz)} m")
+            elif place_spot_for is None and image_click is not None:
+                ik_status = ("To set a place spot: select an object (1-9) or none, "
+                             "press d, then click. To stack: b, then click.")
+            elif place_spot_for is not None and image_click is not None:
+                # Place spots may lie outside the board (e.g. a bin beside
+                # it); the board plane and robot map extend past its edges,
+                # and the IK preflight rejects spots the arm cannot reach.
+                sx, sy = (float(v) for v in transform_points(H, [image_click])[0])
+                target = f"{place_spot_for} objects" if place_spot_for else "other colours"
+                if place_spot_for:
+                    color_places["colors"][place_spot_for] = (sx, sy)
+                else:
+                    color_places["default"] = (sx, sy)
+                place_spot_for = None
+                off_board = not (0.0 <= sx <= board_cm[0] and 0.0 <= sy <= board_cm[1])
+                try:
+                    save_color_places(args.color_places, color_places)
+                    ik_status = (f"Place spot for {target} set to ({sx:.1f}, {sy:.1f}) cm"
+                                 f"{' (outside the board)' if off_board else ''}. "
+                                 "Press p to check it is reachable.")
+                    # Check the reach now, so an unreachable spot is found
+                    # here rather than when a pick fails.
+                    if preview_future is None and not control_futures:
+                        spot_xyz = board_to_robot_xyz((sx, sy), args.grasp_height, ik_mapping)
+                        preview_future = preview_executor.submit(
+                            check_reach, args.ik_url, spot_xyz,
+                            f"The place spot for {target}", args.move_duration, jaw_side)
+                        preview_task = "spot_check"
+                        ik_status = (f"Place spot for {target} set to ({sx:.1f}, {sy:.1f}) cm"
+                                     f"{' (outside the board)' if off_board else ''}; "
+                                     "checking the arm can reach it...")
+                except OSError as exc:
+                    ik_status = f"Could not save place spots: {exc}"
             if key == ord('c'):
                 new_corners = pick_corners(frame, board_cm)
+                # pick_corners leaves a no-op mouse callback; restore the
+                # buttons and place-spot clicks.
+                if args.ik_pick_place:
+                    cv2.setMouseCallback(WINDOW_NAME, on_detector_mouse)
+                pending_control["image_click"] = None
                 if new_corners is not None:
                     corners = new_corners
                     save_calibration(args.calib_file, frame_size, board_cm, corners)

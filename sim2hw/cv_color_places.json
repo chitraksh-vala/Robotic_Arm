@@ -1,0 +1,14 @@
+{
+  "units": "board cm (x, y) of the placed object's centre; default null = Corner 2",
+  "default": null,
+  "colors": {
+    "red": [
+      30.31,
+      -2.7
+    ],
+    "yellow": [
+      31.21,
+      29.49
+    ]
+  }
+}

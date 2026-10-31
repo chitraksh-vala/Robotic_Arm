@@ -9,10 +9,13 @@ command arm motion.
 
 1. Start `python sim2hw/ik_server.py` and `python sim2hw/hw_bridge.py --port COM4`
    (replace `COM4` with the arm's port). Connect to both in the coordinate UI.
-2. Choose at least three reachable points on the board. They do not need to be
-   corners, and the wrist does not need to point straight down. Wrist roll may
-   differ between points. At each point, place the same gripper reference point
-   (`gripperframe`) over the measured board X/Y. Keep the points spread across
+2. Choose at least three reachable points on the board (the four corners are
+   easiest; see step 8 of the [first-time calibration](../README.md#first-time-calibration-so-arm101)).
+   Record them in the pose the arm picks in: orientation **Downwards**, driven
+   there with **Run Coordinate Action**. Points recorded with a tilted wrist
+   land differently when picks later point straight down, which shows up as
+   centimetre-level misses. At each point, place the same gripper reference
+   point (`gripperframe`) over the measured board X/Y. Keep the points spread across
    the reachable area and non-collinear; points along one line cannot define a
    2D board mapping.
 3. For each point, position the model's `gripperframe` reference at the measured

@@ -44,6 +44,10 @@ the calibration id `follower`:
 lerobot-calibrate --robot.type=so101_follower --robot.port=COM4 --robot.id=follower
 ```
 
+For a new arm, follow the full step-by-step
+[first-time calibration](../README.md#first-time-calibration-so-arm101): motor
+IDs, joint calibration, gripper positions, camera and board points.
+
 ## IK server (`ik_server.py`)
 
 ### Options

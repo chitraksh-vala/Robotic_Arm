@@ -14,7 +14,7 @@ The project is a workspace, not one single app. Most folders can be run independ
 
 ## Quick Start: Vision Pick-and-Place
 
-The camera detector finds objects on the workspace board, and the IK server and hardware bridge pick a selected one and place it at the board's Corner 2.
+The camera detector finds objects on the workspace board, and the IK server and hardware bridge pick a selected one and place it at the spot set for its colour (any other colour goes to the default spot, Corner 2 unless you set one).
 
 Set up once (Windows PowerShell, from this folder):
 
@@ -31,13 +31,16 @@ Run (each part opens in its own window):
 
 If scripts are blocked: `powershell -ExecutionPolicy Bypass -File .\setup.ps1` (same for `run.ps1`). `Get-Help .\run.ps1 -Detailed` lists all options (camera, 3-D viewer, dashboard, extra arguments).
 
+**New operator? Start with [PICK_AND_PLACE_README.md](PICK_AND_PLACE_README.md):** the full guide from setup and arm calibration to place spots, stacking and teaching.
+
 | Part | Docs |
 |---|---|
+| Full operator guide (everything below in one place) | [PICK_AND_PLACE_README.md](PICK_AND_PLACE_README.md) |
 | IK server and hardware bridge | [sim2hw/README.md](sim2hw/README.md) |
 | Object detector: calibration, keys, teaching | [CV-seg/Robotic_Arm-main/README.md](CV-seg/Robotic_Arm-main/README.md) |
 | Board-to-robot calibration points | [sim2hw/CV_IK_MAPPING.md](sim2hw/CV_IK_MAPPING.md) |
 
-Requirements: Python 3.12 or 3.13 (3.10+ with `-SimOnly`), a USB camera, and for the real arm a LeRobot-calibrated SO-101 (see [LeRobot Calibration](#lerobot-calibration)). The packages are in `requirements.txt` and `requirements-hardware.txt`.
+Requirements: Python 3.12 or 3.13 (3.10+ with `-SimOnly`), a USB camera, and for the real arm a calibrated SO-101 (first time: follow [First-Time Calibration](#first-time-calibration-so-arm101)). The packages are in `requirements.txt` and `requirements-hardware.txt`.
 
 ## Repository Map
 
@@ -78,42 +81,121 @@ lerobot-find-port
 
 This README assumes the LeRobot `Scripts` folder is already on your Windows `PATH`, so LeRobot commands can be run by name.
 
-## LeRobot Calibration
+## First-Time Calibration (SO-ARM101)
 
-Run this before using the physical arm through `sim2hw/hw_bridge.py`, the CV scripts, or any future leader-follower control. Calibration saves the motor offsets/ranges that LeRobot uses when reading and commanding joint positions.
+Do these steps in order the first time you use an arm with this project. Steps 1–3 are LeRobot's motor calibration, and every program here depends on them. Steps 4–9 calibrate the gripper, camera and board for vision pick-and-place.
 
-Find the port first:
+Run `.\setup.ps1` first. The LeRobot commands below are installed in `.venv\Scripts`, so either activate the environment once per terminal:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+or call them by full path, e.g. `.\.venv\Scripts\lerobot-find-port.exe`. Power the arm and connect its USB cable before starting.
+
+### 1. Find the arm's serial port
 
 ```powershell
 lerobot-find-port
 ```
 
-Calibrate the follower arm, which is the arm being controlled:
+Unplug the arm's USB cable when asked and press Enter. The port that disappeared (for example `COM4`) is the arm. Use it everywhere below.
 
-```powershell
-lerobot-calibrate --robot.type=so101_follower --robot.port=COM4 --robot.id=follower
-```
+### 2. Set the motor IDs (brand-new arm only)
 
-Replace `COM4` with your actual follower-arm port. This repository's `sim2hw/hw_bridge.py` currently loads the default calibration id `follower`, so using `--robot.id=follower` keeps it aligned with the existing bridge code.
-
-If you are using another SO101 arm as the physical external controller, calibrate that leader arm too:
-
-```powershell
-lerobot-calibrate --teleop.type=so101_leader --teleop.port=COM5 --teleop.id=leader
-```
-
-Replace `COM5` with the leader-arm port. During calibration, place the arm in its centered pose when prompted, press Enter, then move each joint through its full range of motion.
-
-For a brand-new arm whose motor IDs have not been configured yet, run motor setup before calibration:
+Skip this if the arm has been used before. New STS3215 servos all have the same ID, so each one must be given its own:
 
 ```powershell
 lerobot-setup-motors --robot.type=so101_follower --robot.port=COM4
 ```
 
-For a brand-new leader arm:
+When asked, connect **only that one motor** to the controller board and press Enter. It starts with `gripper`, then `wrist_roll`, `wrist_flex`, `elbow_flex`, `shoulder_lift` and `shoulder_pan`. Reconnect the full chain afterwards.
+
+### 3. Calibrate the joints (LeRobot)
+
+This records each joint's centre and range, so angles mean the same thing on the real arm and in the MuJoCo model:
 
 ```powershell
-lerobot-setup-motors --teleop.type=so101_leader --teleop.port=COM5
+lerobot-calibrate --robot.type=so101_follower --robot.port=COM4 --robot.id=follower
+```
+
+1. If a calibration file already exists, type `c` and press Enter to redo it (plain Enter keeps the old one).
+2. The motors go limp. Move the arm by hand to the **middle of every joint's range**: base facing straight ahead, shoulder and elbow each halfway between their end stops, wrist halfway, gripper half open. Press Enter.
+3. Move **every joint except wrist roll** slowly from one end stop to the other and back (shoulder pan, shoulder lift, elbow, wrist flex, gripper fully open and fully closed). Press Enter when done. Wrist roll is a full-turn joint and is not recorded.
+
+Always use `--robot.id=follower`: `sim2hw/hw_bridge.py` loads
+`%USERPROFILE%\.cache\huggingface\lerobot\calibration\robots\so_follower\follower.json`.
+Without `--robot.id` the file is saved as `None.json` instead. The bridge then cannot find it and runs with default offsets, so every move lands in the wrong place.
+
+Redo this step after replacing a servo, re-mounting a horn, or if the real arm and the simulation disagree (step 4).
+
+### 4. Check the real arm against the simulation
+
+```powershell
+.\run.ps1 -Port COM4 -Detector none -Viewer
+```
+
+Open `http://127.0.0.1:7842/` (the coordinate-control page), click **Connect** and wait for the hardware badge to show online. Click **Home**. The real arm and the MuJoCo viewer should take the same pose. A joint that turns the wrong way or stops noticeably short means step 3 was off, so redo it.
+
+### 5. Record the gripper positions
+
+In the coordinate-control page, under **Gripper Positions**:
+
+1. Click **Unlock Gripper** (only the gripper goes limp).
+2. Close the jaws fully by hand with **nothing between them**, then click **Record Close**. The bridge uses this angle to tell an empty grab from a real one.
+3. Open the jaws a little wider than your largest object (about 7 cm for a 6 cm cube), then click **Record Open**.
+4. Click **Lock Gripper**.
+
+### 6. Record a home pose (optional)
+
+Move the arm to a safe resting pose with the Target jog buttons and **Run Coordinate Action**, then click **Record Current As Home**. KILL/HOME in the detector return here.
+
+### 7. Calibrate the camera view of the board
+
+Start the detector (`.\run.ps1 -Port COM4`). If the image is black or from the wrong camera, run `lerobot-find-cameras opencv`: it lists the cameras and saves a test picture from each to `outputs\captured_images`. Pass the board camera's index with `-Camera <index>`. On the first run it asks for two calibrations:
+
+- **Board corners:** click the four inner corners of the taped board. The **first click is board (0, 0)**, and click 1 → 2 runs along the 21.3 cm side. Remember which physical corner you clicked first, because step 8 uses it.
+- **Object height plane:** place the 6 × 6 cm reference square (top face 4 cm high) in each corner as prompted, press Enter, and click its four top corners.
+
+Details: [CV-seg/Robotic_Arm-main/README.md](CV-seg/Robotic_Arm-main/README.md#first-run-calibration).
+
+### 8. Record the board-to-robot points
+
+These tell the detector where board coordinates are in the arm's frame. In the coordinate-control page:
+
+1. Choose **Downwards**. Drive the gripper with the Target X/Y/Z buttons and **Run Coordinate Action** until the point between the jaw tips sits just above a board corner. Record in the same pose the arm uses for picking (gripper pointing down), not with the wrist tilted.
+2. Under **CV Board Calibration Points**, enter the name and board coordinates and click **Record Current Arm Point**. Do all four corners (at least three):
+
+| Name | Board X cm | Board Y cm | Corner |
+|---|---|---|---|
+| `Corner_1` | 0 | 0 | the corner you clicked first in step 7 |
+| `Corner_2` | 21.3 | 0 | second click |
+| `Corner_3` | 21.3 | 28.3 | third click |
+| `Corner_4` | 0 | 28.3 | fourth click |
+
+The points are saved in `sim2hw/cv_robot_points.json`. More detail: [sim2hw/CV_IK_MAPPING.md](sim2hw/CV_IK_MAPPING.md).
+
+### 9. Teach a few pick spots
+
+The corner points only give a starting map, and the first picks may miss by a centimetre or two. In the detector, pick an object (`a`). Nudge the pick until the gripper closes centred on it, then press `g`. Repeat at the yellow **teach here** marker until the panel's expected miss is small. See [Teaching the arm](CV-seg/Robotic_Arm-main/README.md#teaching-the-arm-learning-mode).
+
+### When to redo what
+
+| After … | Redo |
+|---|---|
+| Replacing a servo or re-mounting a horn | 2 (new servo only), 3, 4, then 8 and 9 |
+| Moving the camera | 7 (the detector warns "board/camera moved") |
+| Moving the board or the arm base | 7 and 8, then teach new spots (old ones are ignored automatically; Shift+G deletes them) |
+| Changing the gripper or its jaws | 5 |
+| A new session with nothing moved | Nothing; the detector checks for a moved board on startup |
+
+### Leader arm (teleoperation only)
+
+Only needed for [Leader-Follower Teleop Control](#leader-follower-teleop-control). Set up and calibrate the leader the same way, with its own port and id:
+
+```powershell
+lerobot-setup-motors --teleop.type=so101_leader --teleop.port=COM5      # brand-new arm only
+lerobot-calibrate --teleop.type=so101_leader --teleop.port=COM5 --teleop.id=leader
 ```
 
 ## Browser Control
